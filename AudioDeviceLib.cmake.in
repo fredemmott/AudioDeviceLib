@@ -23,3 +23,18 @@ target_link_libraries(
   ${INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}AudioDeviceLib${CMAKE_STATIC_LIBRARY_SUFFIX}
 )
 target_include_directories(AudioDeviceLib INTERFACE ${INSTALL_DIR}/include)
+
+if(APPLE)
+  find_library(AUDIOTOOLBOX_FRAMEWORK AudioToolbox)
+  find_library(COREAUDIO_FRAMEWORK CoreAudio)
+  find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
+  target_link_libraries(
+    AudioDeviceLib
+    INTERFACE
+    ${AUDIOTOOLBOX_FRAMEWORK}
+    ${COREAUDIO_FRAMEWORK}
+    ${COREFOUNDATION_FRAMEWORK}
+  )
+elseif(WIN32)
+  target_link_libraries(AudioDeviceLib INTERFACE Winmm)
+endif()

@@ -153,7 +153,7 @@ jobs:
         run: ls -lR
       - name: Create Zip
         id: create-zip
-        working_directory: artifacts/demos-${{matrix.os}}-${{matrix.build-type}}
+        working-directory: artifacts/demos-${{matrix.os}}-${{matrix.build-type}}
         run: |
           ZIP_NAME="demos-${{matrix.os}}-${{matrix.build-type}}.zip"
           ZIP_PATH="${{runner.temp}}/${ZIP_NAME}"

@@ -26,6 +26,7 @@ set(
   CACHE STRING "AudioDeviceLib.cmake: type of source repository version id"
 )
 set(
+  SOURCE_REF
   CACHE STRING "AudioDeviceLib.cmake: source repository version ID"
 )
 configure_file(

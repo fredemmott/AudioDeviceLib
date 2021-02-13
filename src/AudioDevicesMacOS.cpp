@@ -156,11 +156,11 @@ void SetDefaultAudioDeviceID(
     return;
   }
 
-	AudioObjectPropertyAddress prop = {
-		direction == AudioDeviceDirection::INPUT
-			? kAudioHardwarePropertyDefaultInputDevice
-			: kAudioHardwarePropertyDefaultOutputDevice,
-		kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster};
+  AudioObjectPropertyAddress prop = {
+    direction == AudioDeviceDirection::INPUT
+      ? kAudioHardwarePropertyDefaultInputDevice
+      : kAudioHardwarePropertyDefaultOutputDevice,
+    kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster};
   AudioObjectSetPropertyData(
     kAudioObjectSystemObject, &prop, 0, NULL, sizeof(native_id), &native_id);
 }

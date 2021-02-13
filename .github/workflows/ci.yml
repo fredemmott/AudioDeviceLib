@@ -155,7 +155,8 @@ jobs:
         id: create-zip
         working-directory: artifacts/demos-${{matrix.os}}-${{matrix.build-type}}
         run: |
-          ZIP_NAME="demos-${{matrix.os}}-${{matrix.build-type}}.zip"
+          VERSION="$(echo ${{github.ref}} | awk -F/ '{print $NF}')"
+          ZIP_NAME="audiodevicelib-${VERSION}-demos-${{matrix.os}}-${{matrix.build-type}}.zip"
           ZIP_PATH="${{runner.temp}}/${ZIP_NAME}"
           7z a "${ZIP_PATH}"
           echo "::set-output name=name::${ZIP_NAME}"

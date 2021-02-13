@@ -10,6 +10,7 @@ endif()
 
 include(GNUInstallDirs)
 add_subdirectory(src)
+add_subdirectory(demos)
 
 set(
   SOURCE_URL_TYPE

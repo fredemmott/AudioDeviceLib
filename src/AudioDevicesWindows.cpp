@@ -132,7 +132,6 @@ std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
     CComPtr<IPropertyStore> properties;
     const auto propStoreResult = device->OpenPropertyStore(STGM_READ, &properties);
     if (!properties) {
-      ESDLog(L"Got a soundcard ({}) with inaccessible property store - error {}", nativeID, propStoreResult);
       continue;
     }
     PROPVARIANT nativeCombinedName;
@@ -164,7 +163,6 @@ std::string GetDefaultAudioDeviceID(
   CComPtr<IMMDeviceEnumerator> de;
   de.CoCreateInstance(__uuidof(MMDeviceEnumerator));
   if (!de) {
-    ESDDebug("Failed to create MMDeviceEnumerator");
     return std::string();
   }
   CComPtr<IMMDevice> device;
@@ -172,13 +170,11 @@ std::string GetDefaultAudioDeviceID(
     AudioDeviceDirectionToEDataFlow(direction), AudioDeviceRoleToERole(role),
     &device);
   if (!device) {
-    ESDDebug("No default audio device");
     return std::string();
   }
   LPWSTR deviceID;
   device->GetId(&deviceID);
   if (!deviceID) {
-    ESDDebug("No default audio device ID");
     return std::string();
   }
   return Utf16ToUtf8(deviceID);
@@ -419,16 +415,13 @@ AddDefaultAudioDeviceChangeCallback(DefaultChangeCallbackFun cb) {
   CComPtr<IMMDeviceEnumerator> de;
   de.CoCreateInstance(__uuidof(MMDeviceEnumerator));
   if (!de) {
-    ESDDebug("failed to get enumerator");
     return nullptr;
   }
   CComPtr<DefaultChangeCOMCallback> impl(new DefaultChangeCOMCallback(cb));
   if (de->RegisterEndpointNotificationCallback(impl) != S_OK) {
-    ESDDebug("failed to register default callback");
     return nullptr;
   }
 
-  ESDDebug("returning new default callback handle");
   return std::make_unique<DefaultChangeCallbackHandle>(
     new DefaultChangeCallbackHandleImpl(impl, de));
 }

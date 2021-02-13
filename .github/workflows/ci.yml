@@ -158,8 +158,8 @@ jobs:
           ZIP_NAME="demos-${{matrix.os}}-${{matrix.build-type}}.zip"
           ZIP_PATH="${{runner.temp}}/${ZIP_NAME}"
           7z a "${{runner.temp}}/${ZIP_PATH}" *
-        echo "::set-output name=name::${ZIP_NAME}"
-        echo "::set-output name=path::${ZIP_PATH}"
+          echo "::set-output name=name::${ZIP_NAME}"
+          echo "::set-output name=path::${ZIP_PATH}"
       - name: Attach Zip to release
         uses: actions/upload-release-asset@v1
         env:

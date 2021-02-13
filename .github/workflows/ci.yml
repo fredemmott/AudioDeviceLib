@@ -50,7 +50,7 @@ jobs:
             arch: x86_64
             runs-on: macos-latest
   make-zip:
-    name: Build release zip archive
+    name: Create zip archive
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -67,7 +67,7 @@ jobs:
           name: AudioDeviceLib.zip
           path: AudioDeviceLib.zip
   make-cmake-file:
-    name: Make Release CMake file
+    name: Make release CMake file
     if: startsWith(github.ref, 'refs/tags/v')
     needs: make-zip
     runs-on: macos-latest
@@ -140,7 +140,7 @@ jobs:
           asset_name: AudioDeviceLib.cmake
           asset_content_type: text/plain
   attach-demos-to-release:
-    name: Attach Demos To Release
+    name: Attach demos to release
     needs: create-release
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest

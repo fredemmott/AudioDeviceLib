@@ -25,7 +25,7 @@ jobs:
         working-directory: build
         run: cmake --install . --config ${{matrix.build-type}}
       - name: Upload AudioDeviceLib.cmake
-        if: !startsWith(github.ref, 'refs/tags/v')
+        if: "!startsWith(github.ref, 'refs/tags/v')"
         uses: actions/upload-artifact@v2
         with:
           name: AudioDeviceLib.cmake

@@ -32,7 +32,7 @@ jobs:
       - name: Upload Demos
         uses: actions/upload-artifact@v2
         with:
-          name: demos-${{matrix.os}}-${{matrix.arch}}-${{matrix.build-type}}
+          name: demos-${{matrix.os}}-${{matrix.build-type}}
           path: ${{runner.temp}}/install/demos/
     strategy:
       fail-fast: false

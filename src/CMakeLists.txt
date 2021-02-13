@@ -1,5 +1,5 @@
 if(WIN32)
-  set(SOURCES AudioDevicesWindows.cpp StringEncoding.cpp)
+  set(SOURCES AudioDevicesWindows.cpp)
 endif()
 if(APPLE)
   set(SOURCES AudioDevicesMacOS.cpp)

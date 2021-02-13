@@ -5,7 +5,6 @@
  */
 
 #include <CoreAudio/CoreAudio.h>
-#include <fmt/format.h>
 
 #include "AudioDevices.h"
 
@@ -73,8 +72,15 @@ std::string MakeDeviceID(UInt32 id, AudioDeviceDirection dir) {
   const auto uid = GetAudioObjectProperty<std::string>(
     id, {kAudioDevicePropertyDeviceUID, kAudioObjectPropertyScopeGlobal,
          kAudioObjectPropertyElementMaster});
-  return fmt::format(
-    "{}/{}", dir == AudioDeviceDirection::INPUT ? "input" : "output", uid);
+  char buf[1024];
+  snprintf(
+    buf,
+    sizeof(buf),
+    "%s/%s",
+    dir == AudioDeviceDirection::INPUT ? "input" : "output",
+    uid.c_str()
+  );
+  return std::string(buf);
 }
 
 std::tuple<UInt32, AudioDeviceDirection> ParseDeviceID(const std::string& id) {

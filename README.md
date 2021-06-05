@@ -1,6 +1,6 @@
 ## Description
 
-This is a C++ library for doing basic operations on audio devices (e.g. mute/unmute, changing active device) on MacOS and Linux.
+This is a C++ library for doing basic operations on audio devices (e.g. mute/unmute, changing active device) on MacOS and Windows.
 
 It is used by:
 - [StreamDeck-AudioMute](https://github.com/fredemmott/StreamDeck-AudioMute)

@@ -16,8 +16,8 @@
 
 #include <winrt/base.h>
 
-#include "PolicyConfig.h"
 #include "Functiondiscoverykeys_devpkey.h"
+#include "PolicyConfig.h"
 
 namespace FredEmmott::Audio {
 
@@ -64,7 +64,8 @@ winrt::com_ptr<IMMDevice> DeviceIDToDevice(const std::string& device_id) {
     return cached->second;
   }
 
-  auto de = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
+  auto de
+    = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
   auto utf16 = Utf8ToUtf16(device_id);
   winrt::com_ptr<IMMDevice> device;
   de->GetDevice(utf16.c_str(), device.put());
@@ -123,11 +124,14 @@ AudioDeviceState GetAudioDeviceState(const std::string& id) {
 
 std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
   AudioDeviceDirection direction) {
-  auto de = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
+  auto de
+    = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
 
   winrt::com_ptr<IMMDeviceCollection> devices;
   de->EnumAudioEndpoints(
-    AudioDeviceDirectionToEDataFlow(direction), DEVICE_STATEMASK_ALL, devices.put());
+    AudioDeviceDirectionToEDataFlow(direction),
+    DEVICE_STATEMASK_ALL,
+    devices.put());
 
   UINT deviceCount;
   devices->GetCount(&deviceCount);
@@ -140,7 +144,8 @@ std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
     device->GetId(&nativeID);
     const auto id = Utf16ToUtf8(nativeID);
     winrt::com_ptr<IPropertyStore> properties;
-    const auto propStoreResult = device->OpenPropertyStore(STGM_READ, properties.put());
+    const auto propStoreResult
+      = device->OpenPropertyStore(STGM_READ, properties.put());
     if (!properties) {
       continue;
     }
@@ -156,7 +161,7 @@ std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
       continue;
     }
 
-    out[id] = AudioDeviceInfo{
+    out[id] = AudioDeviceInfo {
       .id = id,
       .interfaceName = Utf16ToUtf8(nativeInterfaceName.pwszVal),
       .endpointName = Utf16ToUtf8(nativeEndpointName.pwszVal),
@@ -170,13 +175,15 @@ std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
 std::string GetDefaultAudioDeviceID(
   AudioDeviceDirection direction,
   AudioDeviceRole role) {
-  auto de = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
+  auto de
+    = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
   if (!de) {
     return std::string();
   }
   winrt::com_ptr<IMMDevice> device;
   de->GetDefaultAudioEndpoint(
-    AudioDeviceDirectionToEDataFlow(direction), AudioDeviceRoleToERole(role),
+    AudioDeviceDirectionToEDataFlow(direction),
+    AudioDeviceRoleToERole(role),
     device.put());
   if (!device) {
     return std::string();
@@ -197,10 +204,10 @@ void SetDefaultAudioDeviceID(
     return;
   }
 
-  auto policyConfig = winrt::create_instance<IPolicyConfigVista>(__uuidof(CPolicyConfigVistaClient));
+  auto policyConfig = winrt::create_instance<IPolicyConfigVista>(
+    __uuidof(CPolicyConfigVistaClient));
   const auto utf16 = Utf8ToUtf16(desiredID);
-  policyConfig->SetDefaultEndpoint(
-    utf16.c_str(), AudioDeviceRoleToERole(role));
+  policyConfig->SetDefaultEndpoint(utf16.c_str(), AudioDeviceRoleToERole(role));
 }
 
 bool IsAudioDeviceMuted(const std::string& deviceID) {
@@ -230,7 +237,8 @@ void UnmuteAudioDevice(const std::string& deviceID) {
 }
 
 namespace {
-class VolumeCOMCallback : public winrt::implements<VolumeCOMCallback, IAudioEndpointVolumeCallback> {
+class VolumeCOMCallback
+  : public winrt::implements<VolumeCOMCallback, IAudioEndpointVolumeCallback> {
  public:
   VolumeCOMCallback(std::function<void(bool isMuted)> cb) : mCB(cb) {
   }
@@ -290,7 +298,8 @@ namespace {
 typedef std::function<
   void(AudioDeviceDirection, AudioDeviceRole, const std::string&)>
   DefaultChangeCallbackFun;
-class DefaultChangeCOMCallback : public winrt::implements<DefaultChangeCOMCallback, IMMNotificationClient> {
+class DefaultChangeCOMCallback
+  : public winrt::implements<DefaultChangeCOMCallback, IMMNotificationClient> {
  public:
   DefaultChangeCOMCallback(DefaultChangeCallbackFun cb) : mCB(cb) {
   }
@@ -311,8 +320,8 @@ class DefaultChangeCOMCallback : public winrt::implements<DefaultChangeCOMCallba
         break;
     }
     const AudioDeviceDirection direction = (flow == EDataFlow::eCapture)
-                                             ? AudioDeviceDirection::INPUT
-                                             : AudioDeviceDirection::OUTPUT;
+      ? AudioDeviceDirection::INPUT
+      : AudioDeviceDirection::OUTPUT;
     mCB(direction, role, Utf16ToUtf8(defaultDeviceID));
 
     return S_OK;
@@ -375,7 +384,8 @@ DefaultChangeCallbackHandle::~DefaultChangeCallbackHandle() {
 
 std::unique_ptr<DefaultChangeCallbackHandle>
 AddDefaultAudioDeviceChangeCallback(DefaultChangeCallbackFun cb) {
-  auto de = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
+  auto de
+    = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
   if (!de) {
     return nullptr;
   }

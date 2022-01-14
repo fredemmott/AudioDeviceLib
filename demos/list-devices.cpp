@@ -4,9 +4,9 @@
  * LICENSE file.
  */
 
-#include "../src/AudioDevices.h"
-
 #include <iostream>
+
+#include "../src/AudioDevices.h"
 
 #ifdef _WIN32
 #include <winrt/base.h>

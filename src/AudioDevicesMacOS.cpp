@@ -385,8 +385,8 @@ std::shared_ptr<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
 
 struct DefaultChangeCallbackHandle::Impl {
   Impl(std::function<
-       void(AudioDeviceDirection, AudioDeviceRole, const std::string&)> cb) {
-    mInputImpl =
+       void(AudioDeviceDirection, AudioDeviceRole, const std::string&)> cb)
+    : mInputImpl(
       [=](AudioDeviceID native_id) {
         const auto device
           = MakeDeviceID(native_id, AudioDeviceDirection::INPUT);
@@ -395,9 +395,9 @@ struct DefaultChangeCallbackHandle::Impl {
     kAudioObjectSystemObject,
     {kAudioHardwarePropertyDefaultInputDevice,
      kAudioObjectPropertyScopeGlobal,
-     kAudioObjectPropertyElementMaster};
+       kAudioObjectPropertyElementMaster}),
 
-    mOutputImpl =
+      mOutputImpl(
       [=](AudioDeviceID native_id) {
         const auto device
           = MakeDeviceID(native_id, AudioDeviceDirection::OUTPUT);
@@ -406,7 +406,7 @@ struct DefaultChangeCallbackHandle::Impl {
     kAudioObjectSystemObject,
     {kAudioHardwarePropertyDefaultOutputDevice,
      kAudioObjectPropertyScopeGlobal,
-     kAudioObjectPropertyElementMaster};
+         kAudioObjectPropertyElementMaster}) {
   }
 
  private:

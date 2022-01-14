@@ -71,40 +71,48 @@ bool IsAudioDeviceMuted(const std::string& deviceID);
 void MuteAudioDevice(const std::string& deviceID);
 void UnmuteAudioDevice(const std::string& deviceID);
 
-class MuteCallbackHandle {
+class MuteCallbackHandle final {
  public:
   class Impl;
-  MuteCallbackHandle(Impl*);
+  MuteCallbackHandle(const std::shared_ptr<Impl>& p);
   ~MuteCallbackHandle();
 
-  MuteCallbackHandle(const MuteCallbackHandle&) = delete;
-  MuteCallbackHandle& operator=(const MuteCallbackHandle&) = delete;
-
  private:
-  std::unique_ptr<Impl> p;
+  std::shared_ptr<Impl> p;
 };
 
-std::shared_ptr<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
+MuteCallbackHandle AddAudioDeviceMuteUnmuteCallback(
   const std::string& deviceID,
   std::function<void(bool isMuted)>);
 
-class DefaultChangeCallbackHandle {
+class DefaultChangeCallbackHandle final {
  public:
   class Impl;
-  DefaultChangeCallbackHandle(Impl*);
+  DefaultChangeCallbackHandle(const std::shared_ptr<Impl>& p);
   ~DefaultChangeCallbackHandle();
 
-  DefaultChangeCallbackHandle(const DefaultChangeCallbackHandle&) = delete;
-  DefaultChangeCallbackHandle& operator=(const DefaultChangeCallbackHandle&)
-    = delete;
-
  private:
-  std::unique_ptr<Impl> p;
+  std::shared_ptr<Impl> p;
 };
 
-std::shared_ptr<DefaultChangeCallbackHandle>
-  AddDefaultAudioDeviceChangeCallback(
-    std::function<
-      void(AudioDeviceDirection, AudioDeviceRole, const std::string&)>);
+DefaultChangeCallbackHandle AddDefaultAudioDeviceChangeCallback(
+  std::function<
+    void(AudioDeviceDirection, AudioDeviceRole, const std::string&)>);
+
+class AudioDevicePlugEventCallbackHandle final {
+ public:
+  class Impl;
+  AudioDevicePlugEventCallbackHandle(const std::shared_ptr<Impl>& p);
+  ~AudioDevicePlugEventCallbackHandle();
+
+ private:
+  std::shared_ptr<Impl> p;
+};
+
+enum class AudioDevicePlugEvent { ADDED, REMOVED };
+
+AudioDevicePlugEventCallbackHandle AddAudioDevicePlugEventCallback(
+  std::function<void(AudioDevicePlugEvent, const std::string&)>
+);
 
 }// namespace FredEmmott::Audio

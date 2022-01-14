@@ -261,6 +261,9 @@ class MuteCallbackHandle::Impl {
  public:
   winrt::com_ptr<IAudioEndpointVolumeCallback> impl;
   winrt::com_ptr<IAudioEndpointVolume> dev;
+  ~MuteCallbackHandle() {
+    dev->UnregisterControlChangeNotify(impl.get());
+  };
 };
 
 MuteCallbackHandle::MuteCallbackHandle(Impl* p)
@@ -268,7 +271,6 @@ MuteCallbackHandle::MuteCallbackHandle(Impl* p)
 }
 
 MuteCallbackHandle::~MuteCallbackHandle() {
-  p->dev->UnregisterControlChangeNotify(p->impl.get());
 }
 
 std::shared_ptr<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
@@ -280,8 +282,7 @@ std::shared_ptr<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
   if (ret != S_OK) {
     throw operation_not_supported_error();
   }
-  return std::make_shared<MuteCallbackHandle>(
-    new MuteCallbackHandle::Impl {impl, dev});
+  return std::make_shared<MuteCallbackHandle::Impl>(impl, dev);
 }
 
 namespace {
@@ -345,13 +346,17 @@ class DefaultChangeCOMCallback
 struct DefaultChangeCallbackHandle::Impl {
   winrt::com_ptr<IMMNotificationClient> impl;
   winrt::com_ptr<IMMDeviceEnumerator> enumerator;
+  ~Impl() {
+    enumerator->UnregisterEndpointNotificationCallback(impl.get());
+  }
 };
 
-DefaultChangeCallbackHandle::DefaultChangeCallbackHandle(Impl* p) : p(p) {
+DefaultChangeCallbackHandle::DefaultChangeCallbackHandle(
+  const std::shared_ptr<Impl>& p)
+  : p(p) {
 }
 
 DefaultChangeCallbackHandle::~DefaultChangeCallbackHandle() {
-  p->enumerator->UnregisterEndpointNotificationCallback(p->impl.get());
 }
 
 std::shared_ptr<DefaultChangeCallbackHandle>

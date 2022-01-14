@@ -356,11 +356,8 @@ struct BaseCallbackHandleImpl {
 
 }// namespace
 
-struct MuteCallbackHandleImpl : BaseCallbackHandleImpl<bool> {
-  MuteCallbackHandleImpl(
-    UserCallback cb,
-    AudioDeviceID device,
-    AudioDeviceDirection direction)
+struct MuteCallbackHandle::Impl : BaseCallbackHandleImpl<bool> {
+  Impl(UserCallback cb, AudioDeviceID device, AudioDeviceDirection direction)
     : BaseCallbackHandleImpl(
       cb,
       device,
@@ -372,44 +369,44 @@ struct MuteCallbackHandleImpl : BaseCallbackHandleImpl<bool> {
   }
 };
 
-MuteCallbackHandle::MuteCallbackHandle(MuteCallbackHandleImpl* impl)
-  : AudioDeviceCallbackHandle(impl) {
+MuteCallbackHandle::MuteCallbackHandle(Impl* p) : p(p) {
 }
+
 MuteCallbackHandle::~MuteCallbackHandle() {
 }
 
-std::unique_ptr<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
+std::shared_ptr<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
   const std::string& deviceID,
   std::function<void(bool isMuted)> cb) {
   const auto [id, direction] = ParseDeviceID(deviceID);
-  return std::make_unique<MuteCallbackHandle>(
+  return std::make_shared<MuteCallbackHandle>(
     new MuteCallbackHandleImpl(cb, id, direction));
 }
 
-struct DefaultChangeCallbackHandleImpl {
-  DefaultChangeCallbackHandleImpl(
-    std::function<
-      void(AudioDeviceDirection, AudioDeviceRole, const std::string&)> cb)
-    : mInputImpl(
+struct DefaultChangeCallbackHandle::Impl {
+  Impl(std::function<
+       void(AudioDeviceDirection, AudioDeviceRole, const std::string&)> cb) {
+    mInputImpl =
       [=](AudioDeviceID native_id) {
         const auto device
           = MakeDeviceID(native_id, AudioDeviceDirection::INPUT);
         cb(AudioDeviceDirection::INPUT, AudioDeviceRole::DEFAULT, device);
       },
-      kAudioObjectSystemObject,
-      {kAudioHardwarePropertyDefaultInputDevice,
-       kAudioObjectPropertyScopeGlobal,
-       kAudioObjectPropertyElementMaster}),
-      mOutputImpl(
-        [=](AudioDeviceID native_id) {
-          const auto device
-            = MakeDeviceID(native_id, AudioDeviceDirection::OUTPUT);
-          cb(AudioDeviceDirection::OUTPUT, AudioDeviceRole::DEFAULT, device);
-        },
-        kAudioObjectSystemObject,
-        {kAudioHardwarePropertyDefaultOutputDevice,
-         kAudioObjectPropertyScopeGlobal,
-         kAudioObjectPropertyElementMaster}) {
+    kAudioObjectSystemObject,
+    {kAudioHardwarePropertyDefaultInputDevice,
+     kAudioObjectPropertyScopeGlobal,
+     kAudioObjectPropertyElementMaster};
+
+    mOutputImpl =
+      [=](AudioDeviceID native_id) {
+        const auto device
+          = MakeDeviceID(native_id, AudioDeviceDirection::OUTPUT);
+        cb(AudioDeviceDirection::OUTPUT, AudioDeviceRole::DEFAULT, device);
+      },
+    kAudioObjectSystemObject,
+    {kAudioHardwarePropertyDefaultOutputDevice,
+     kAudioObjectPropertyScopeGlobal,
+     kAudioObjectPropertyElementMaster};
   }
 
  private:
@@ -417,19 +414,18 @@ struct DefaultChangeCallbackHandleImpl {
   BaseCallbackHandleImpl<AudioDeviceID> mOutputImpl;
 };
 
-DefaultChangeCallbackHandle::DefaultChangeCallbackHandle(
-  DefaultChangeCallbackHandleImpl* impl)
-  : AudioDeviceCallbackHandle(impl) {
+DefaultChangeCallbackHandle::DefaultChangeCallbackHandle(Impl* p) : p(p) {
 }
+
 DefaultChangeCallbackHandle::~DefaultChangeCallbackHandle() {
 }
 
-std::unique_ptr<DefaultChangeCallbackHandle>
+std::shared_ptr<DefaultChangeCallbackHandle>
 AddDefaultAudioDeviceChangeCallback(
   std::function<void(AudioDeviceDirection, AudioDeviceRole, const std::string&)>
     cb) {
-  return std::make_unique<DefaultChangeCallbackHandle>(
-    new DefaultChangeCallbackHandleImpl(cb));
+  return std::make_shared<DefaultChangeCallbackHandle>(
+    new DefaultChangeCallbackHandle::Impl(cb));
 }
 
 }// namespace FredEmmott::Audio

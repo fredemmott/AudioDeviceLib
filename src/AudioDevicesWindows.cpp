@@ -257,31 +257,21 @@ class VolumeCOMCallback
 
 }// namespace
 
-struct MuteCallbackHandleImpl {
+class MuteCallbackHandle::Impl {
+ public:
   winrt::com_ptr<IAudioEndpointVolumeCallback> impl;
   winrt::com_ptr<IAudioEndpointVolume> dev;
-
-  MuteCallbackHandleImpl(
-    winrt::com_ptr<IAudioEndpointVolumeCallback> impl,
-    winrt::com_ptr<IAudioEndpointVolume> dev)
-    : impl(impl), dev(dev) {
-  }
-
-  ~MuteCallbackHandleImpl() {
-    dev->UnregisterControlChangeNotify(impl.get());
-  }
-
-  MuteCallbackHandleImpl(const VolumeCOMCallback& other) = delete;
-  MuteCallbackHandleImpl& operator=(const VolumeCOMCallback& other) = delete;
 };
 
-MuteCallbackHandle::MuteCallbackHandle(MuteCallbackHandleImpl* impl)
-  : AudioDeviceCallbackHandle(impl) {
-}
-MuteCallbackHandle::~MuteCallbackHandle() {
+MuteCallbackHandle::MuteCallbackHandle(Impl* p)
+  : p(p) {
 }
 
-std::unique_ptr<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
+MuteCallbackHandle::~MuteCallbackHandle() {
+  p->dev->UnregisterControlChangeNotify(p->impl.get());
+}
+
+std::shared_ptr<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
   const std::string& deviceID,
   std::function<void(bool isMuted)> cb) {
   auto dev = DeviceIDToAudioEndpointVolume(deviceID);
@@ -290,8 +280,8 @@ std::unique_ptr<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
   if (ret != S_OK) {
     throw operation_not_supported_error();
   }
-  return std::make_unique<MuteCallbackHandle>(
-    new MuteCallbackHandleImpl(impl, dev));
+  return std::make_shared<MuteCallbackHandle>(
+    new MuteCallbackHandle::Impl {impl, dev});
 }
 
 namespace {
@@ -352,37 +342,19 @@ class DefaultChangeCOMCallback
 
 }// namespace
 
-struct DefaultChangeCallbackHandleImpl {
+struct DefaultChangeCallbackHandle::Impl {
   winrt::com_ptr<IMMNotificationClient> impl;
   winrt::com_ptr<IMMDeviceEnumerator> enumerator;
-
-  DefaultChangeCallbackHandleImpl(
-    winrt::com_ptr<IMMNotificationClient> impl,
-    winrt::com_ptr<IMMDeviceEnumerator> enumerator) {
-    this->impl = impl;
-    this->enumerator = enumerator;
-  }
-
-  ~DefaultChangeCallbackHandleImpl() {
-    enumerator->UnregisterEndpointNotificationCallback(this->impl.get());
-  }
-
-  DefaultChangeCallbackHandleImpl(const DefaultChangeCallbackHandleImpl& copied)
-    = delete;
-  DefaultChangeCallbackHandleImpl& operator=(
-    const DefaultChangeCallbackHandleImpl& other)
-    = delete;
 };
 
-DefaultChangeCallbackHandle::DefaultChangeCallbackHandle(
-  DefaultChangeCallbackHandleImpl* impl)
-  : AudioDeviceCallbackHandle(impl) {
+DefaultChangeCallbackHandle::DefaultChangeCallbackHandle(Impl* p) : p(p) {
 }
 
 DefaultChangeCallbackHandle::~DefaultChangeCallbackHandle() {
+  p->enumerator->UnregisterEndpointNotificationCallback(p->impl.get());
 }
 
-std::unique_ptr<DefaultChangeCallbackHandle>
+std::shared_ptr<DefaultChangeCallbackHandle>
 AddDefaultAudioDeviceChangeCallback(DefaultChangeCallbackFun cb) {
   auto de
     = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
@@ -394,8 +366,8 @@ AddDefaultAudioDeviceChangeCallback(DefaultChangeCallbackFun cb) {
     return nullptr;
   }
 
-  return std::make_unique<DefaultChangeCallbackHandle>(
-    new DefaultChangeCallbackHandleImpl(impl, de));
+  return std::make_shared<DefaultChangeCallbackHandle>(
+    new DefaultChangeCallbackHandle::Impl {impl, de});
 }
 
 }// namespace FredEmmott::Audio

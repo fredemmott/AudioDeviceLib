@@ -71,43 +71,38 @@ bool IsAudioDeviceMuted(const std::string& deviceID);
 void MuteAudioDevice(const std::string& deviceID);
 void UnmuteAudioDevice(const std::string& deviceID);
 
-template <class TImpl>
-class AudioDeviceCallbackHandle {
+class MuteCallbackHandle {
  public:
-  AudioDeviceCallbackHandle(TImpl* impl) : mImpl(impl) {
-  }
-  ~AudioDeviceCallbackHandle() {
-  }
+  class Impl;
+  MuteCallbackHandle(Impl*);
+  ~MuteCallbackHandle();
 
-  AudioDeviceCallbackHandle(const AudioDeviceCallbackHandle& other) = delete;
-  AudioDeviceCallbackHandle& operator=(const AudioDeviceCallbackHandle& other)
-    = delete;
+  MuteCallbackHandle(const MuteCallbackHandle&) = delete;
+  MuteCallbackHandle& operator=(const MuteCallbackHandle&) = delete;
 
  private:
-  std::unique_ptr<TImpl> mImpl;
+  std::unique_ptr<Impl> p;
 };
 
-struct MuteCallbackHandleImpl;
-class MuteCallbackHandle final
-  : public AudioDeviceCallbackHandle<MuteCallbackHandleImpl> {
- public:
-  MuteCallbackHandle(MuteCallbackHandleImpl* impl);
-  ~MuteCallbackHandle();
-};
-
-std::unique_ptr<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
+std::shared_ptr<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
   const std::string& deviceID,
   std::function<void(bool isMuted)>);
 
-struct DefaultChangeCallbackHandleImpl;
-class DefaultChangeCallbackHandle final
-  : public AudioDeviceCallbackHandle<DefaultChangeCallbackHandleImpl> {
+class DefaultChangeCallbackHandle {
  public:
-  DefaultChangeCallbackHandle(DefaultChangeCallbackHandleImpl* impl);
+  class Impl;
+  DefaultChangeCallbackHandle(Impl*);
   ~DefaultChangeCallbackHandle();
+
+  DefaultChangeCallbackHandle(const DefaultChangeCallbackHandle&) = delete;
+  DefaultChangeCallbackHandle& operator=(const DefaultChangeCallbackHandle&)
+    = delete;
+
+ private:
+  std::unique_ptr<Impl> p;
 };
 
-std::unique_ptr<DefaultChangeCallbackHandle>
+std::shared_ptr<DefaultChangeCallbackHandle>
   AddDefaultAudioDeviceChangeCallback(
     std::function<
       void(AudioDeviceDirection, AudioDeviceRole, const std::string&)>);

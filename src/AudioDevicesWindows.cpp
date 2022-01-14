@@ -4,19 +4,20 @@
  * LICENSE file.
  */
 
-// Include order matters for these; don't let the autoformatter break things
-// clang-format off
-#include "windows.h"
-#include "endpointvolume.h"
-#include "mmdeviceapi.h"
-#include "PolicyConfig.h"
-#include "Functiondiscoverykeys_devpkey.h"
-// clang-format on
-
 #include "AudioDevices.h"
 
-#include <atlbase.h>
-#include <comip.h>
+// Include order matters for these; don't let the autoformatter break things
+// clang-format off
+#include <Windows.h>
+#include <endpointvolume.h>
+#include <mmdeviceapi.h>
+#include <Unknwn.h>
+// clang-format on
+
+#include <winrt/base.h>
+
+#include "PolicyConfig.h"
+#include "Functiondiscoverykeys_devpkey.h"
 
 namespace FredEmmott::Audio {
 
@@ -26,23 +27,14 @@ std::string Utf16ToUtf8(const std::wstring& utf16) {
   if (utf16.empty()) {
     return std::string();
   }
-  int utf8_len
-    = WideCharToMultiByte(CP_UTF8, 0, utf16.data(), utf16.size(), 0, 0, 0, 0);
-  std::string buf(utf8_len, 0);
-  WideCharToMultiByte(CP_UTF8, 0, utf16.data(), -1, buf.data(), utf8_len, 0, 0);
-  return buf;
+  return winrt::to_string(utf16);
 }
 
 std::wstring Utf8ToUtf16(const std::string& utf8) {
   if (utf8.empty()) {
     return std::wstring();
   }
-  int wchar_len
-    = MultiByteToWideChar(CP_UTF8, 0, utf8.data(), utf8.size(), 0, 0);
-  std::wstring buf(wchar_len, 0);
-  MultiByteToWideChar(
-    CP_UTF8, 0, utf8.data(), utf8.size(), buf.data(), wchar_len);
-  return buf;
+  return std::wstring(winrt::to_hstring(utf8));
 }
 
 EDataFlow AudioDeviceDirectionToEDataFlow(const AudioDeviceDirection dir) {
@@ -65,18 +57,17 @@ ERole AudioDeviceRoleToERole(const AudioDeviceRole role) {
   __assume(0);
 }
 
-CComPtr<IMMDevice> DeviceIDToDevice(const std::string& device_id) {
-  static std::map<std::string, CComPtr<IMMDevice>> cache;
+winrt::com_ptr<IMMDevice> DeviceIDToDevice(const std::string& device_id) {
+  static std::map<std::string, winrt::com_ptr<IMMDevice>> cache;
   const auto cached = cache.find(device_id);
   if (cached != cache.end()) {
     return cached->second;
   }
 
-  CComPtr<IMMDeviceEnumerator> de;
-  de.CoCreateInstance(__uuidof(MMDeviceEnumerator));
-  CComPtr<IMMDevice> device;
+  auto de = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
   auto utf16 = Utf8ToUtf16(device_id);
-  de->GetDevice(utf16.c_str(), &device);
+  winrt::com_ptr<IMMDevice> device;
+  de->GetDevice(utf16.c_str(), device.put());
   if (!device) {
     throw device_not_available_error();
   }
@@ -84,15 +75,15 @@ CComPtr<IMMDevice> DeviceIDToDevice(const std::string& device_id) {
   return device;
 }
 
-CComPtr<IAudioEndpointVolume> DeviceIDToAudioEndpointVolume(
+winrt::com_ptr<IAudioEndpointVolume> DeviceIDToAudioEndpointVolume(
   const std::string& device_id) {
-  static std::map<std::string, CComPtr<IAudioEndpointVolume>> cache;
+  static std::map<std::string, winrt::com_ptr<IAudioEndpointVolume>> cache;
   const auto cached = cache.find(device_id);
   if (cached != cache.end()) {
     return cached->second;
   }
   auto device = DeviceIDToDevice(device_id);
-  CComPtr<IAudioEndpointVolume> volume;
+  winrt::com_ptr<IAudioEndpointVolume> volume;
   device->Activate(
     __uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, (void**)&volume);
   if (!volume) {
@@ -102,7 +93,7 @@ CComPtr<IAudioEndpointVolume> DeviceIDToAudioEndpointVolume(
   return volume;
 }
 
-AudioDeviceState GetAudioDeviceState(CComPtr<IMMDevice> device) {
+AudioDeviceState GetAudioDeviceState(winrt::com_ptr<IMMDevice> device) {
   DWORD nativeState;
   device->GetState(&nativeState);
 
@@ -132,25 +123,24 @@ AudioDeviceState GetAudioDeviceState(const std::string& id) {
 
 std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
   AudioDeviceDirection direction) {
-  CComPtr<IMMDeviceEnumerator> de;
-  de.CoCreateInstance(__uuidof(MMDeviceEnumerator));
+  auto de = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
 
-  CComPtr<IMMDeviceCollection> devices;
+  winrt::com_ptr<IMMDeviceCollection> devices;
   de->EnumAudioEndpoints(
-    AudioDeviceDirectionToEDataFlow(direction), DEVICE_STATEMASK_ALL, &devices);
+    AudioDeviceDirectionToEDataFlow(direction), DEVICE_STATEMASK_ALL, devices.put());
 
   UINT deviceCount;
   devices->GetCount(&deviceCount);
   std::map<std::string, AudioDeviceInfo> out;
 
   for (UINT i = 0; i < deviceCount; ++i) {
-    CComPtr<IMMDevice> device;
-    devices->Item(i, &device);
+    winrt::com_ptr<IMMDevice> device;
+    devices->Item(i, device.put());
     LPWSTR nativeID;
     device->GetId(&nativeID);
     const auto id = Utf16ToUtf8(nativeID);
-    CComPtr<IPropertyStore> properties;
-    const auto propStoreResult = device->OpenPropertyStore(STGM_READ, &properties);
+    winrt::com_ptr<IPropertyStore> properties;
+    const auto propStoreResult = device->OpenPropertyStore(STGM_READ, properties.put());
     if (!properties) {
       continue;
     }
@@ -180,15 +170,14 @@ std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
 std::string GetDefaultAudioDeviceID(
   AudioDeviceDirection direction,
   AudioDeviceRole role) {
-  CComPtr<IMMDeviceEnumerator> de;
-  de.CoCreateInstance(__uuidof(MMDeviceEnumerator));
+  auto de = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
   if (!de) {
     return std::string();
   }
-  CComPtr<IMMDevice> device;
+  winrt::com_ptr<IMMDevice> device;
   de->GetDefaultAudioEndpoint(
     AudioDeviceDirectionToEDataFlow(direction), AudioDeviceRoleToERole(role),
-    &device);
+    device.put());
   if (!device) {
     return std::string();
   }
@@ -208,10 +197,9 @@ void SetDefaultAudioDeviceID(
     return;
   }
 
-  CComPtr<IPolicyConfigVista> pPolicyConfig;
-  pPolicyConfig.CoCreateInstance(__uuidof(CPolicyConfigVistaClient));
+  auto policyConfig = winrt::create_instance<IPolicyConfigVista>(__uuidof(CPolicyConfigVistaClient));
   const auto utf16 = Utf8ToUtf16(desiredID);
-  pPolicyConfig->SetDefaultEndpoint(
+  policyConfig->SetDefaultEndpoint(
     utf16.c_str(), AudioDeviceRoleToERole(role));
 }
 
@@ -242,35 +230,14 @@ void UnmuteAudioDevice(const std::string& deviceID) {
 }
 
 namespace {
-class VolumeCOMCallback : public IAudioEndpointVolumeCallback {
+class VolumeCOMCallback : public winrt::implements<VolumeCOMCallback, IAudioEndpointVolumeCallback> {
  public:
-  VolumeCOMCallback(std::function<void(bool isMuted)> cb) : mCB(cb), mRefs(0) {
+  VolumeCOMCallback(std::function<void(bool isMuted)> cb) : mCB(cb) {
   }
 
   ~VolumeCOMCallback() {
   }
 
-  virtual HRESULT __stdcall QueryInterface(const IID& iid, void** ret)
-    override {
-    if (iid == IID_IUnknown || iid == __uuidof(IAudioEndpointVolumeCallback)) {
-      *ret = static_cast<IUnknown*>(this);
-      AddRef();
-      return S_OK;
-    }
-    *ret = nullptr;
-    return E_NOINTERFACE;
-  }
-
-  virtual ULONG __stdcall AddRef() override {
-    return InterlockedIncrement(&mRefs);
-  }
-  virtual ULONG __stdcall Release() override {
-    if (InterlockedDecrement(&mRefs) == 0) {
-      delete this;
-      return 0;
-    }
-    return mRefs;
-  }
   virtual HRESULT OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pNotify) override {
     mCB(pNotify->bMuted);
     return S_OK;
@@ -278,23 +245,22 @@ class VolumeCOMCallback : public IAudioEndpointVolumeCallback {
 
  private:
   std::function<void(bool)> mCB;
-  long mRefs;
 };
 
 }// namespace
 
 struct MuteCallbackHandleImpl {
-  CComPtr<VolumeCOMCallback> impl;
-  CComPtr<IAudioEndpointVolume> dev;
+  winrt::com_ptr<IAudioEndpointVolumeCallback> impl;
+  winrt::com_ptr<IAudioEndpointVolume> dev;
 
   MuteCallbackHandleImpl(
-    CComPtr<VolumeCOMCallback> impl,
-    CComPtr<IAudioEndpointVolume> dev)
+    winrt::com_ptr<IAudioEndpointVolumeCallback> impl,
+    winrt::com_ptr<IAudioEndpointVolume> dev)
     : impl(impl), dev(dev) {
   }
 
   ~MuteCallbackHandleImpl() {
-    dev->UnregisterControlChangeNotify(impl);
+    dev->UnregisterControlChangeNotify(impl.get());
   }
 
   MuteCallbackHandleImpl(const VolumeCOMCallback& other) = delete;
@@ -311,8 +277,8 @@ std::unique_ptr<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
   const std::string& deviceID,
   std::function<void(bool isMuted)> cb) {
   auto dev = DeviceIDToAudioEndpointVolume(deviceID);
-  auto impl = CComPtr(new VolumeCOMCallback(cb));
-  auto ret = dev->RegisterControlChangeNotify(impl);
+  auto impl = winrt::make<VolumeCOMCallback>(cb);
+  auto ret = dev->RegisterControlChangeNotify(impl.get());
   if (ret != S_OK) {
     throw operation_not_supported_error();
   }
@@ -324,31 +290,9 @@ namespace {
 typedef std::function<
   void(AudioDeviceDirection, AudioDeviceRole, const std::string&)>
   DefaultChangeCallbackFun;
-class DefaultChangeCOMCallback : public IMMNotificationClient {
+class DefaultChangeCOMCallback : public winrt::implements<DefaultChangeCOMCallback, IMMNotificationClient> {
  public:
-  DefaultChangeCOMCallback(DefaultChangeCallbackFun cb) : mCB(cb), mRefs(1) {
-  }
-
-  virtual HRESULT __stdcall QueryInterface(const IID& iid, void** ret)
-    override {
-    if (iid == IID_IUnknown || iid == __uuidof(IMMNotificationClient)) {
-      *ret = static_cast<IUnknown*>(this);
-      AddRef();
-      return S_OK;
-    }
-    *ret = nullptr;
-    return E_NOINTERFACE;
-  }
-
-  virtual ULONG __stdcall AddRef() override {
-    return InterlockedIncrement(&mRefs);
-  }
-  virtual ULONG __stdcall Release() override {
-    if (InterlockedDecrement(&mRefs) == 0) {
-      delete this;
-      return 0;
-    }
-    return mRefs;
+  DefaultChangeCOMCallback(DefaultChangeCallbackFun cb) : mCB(cb) {
   }
 
   virtual HRESULT OnDefaultDeviceChanged(
@@ -395,24 +339,23 @@ class DefaultChangeCOMCallback : public IMMNotificationClient {
 
  private:
   DefaultChangeCallbackFun mCB;
-  long mRefs;
 };
 
 }// namespace
 
 struct DefaultChangeCallbackHandleImpl {
-  CComPtr<DefaultChangeCOMCallback> impl;
-  CComPtr<IMMDeviceEnumerator> enumerator;
+  winrt::com_ptr<IMMNotificationClient> impl;
+  winrt::com_ptr<IMMDeviceEnumerator> enumerator;
 
   DefaultChangeCallbackHandleImpl(
-    CComPtr<DefaultChangeCOMCallback> impl,
-    CComPtr<IMMDeviceEnumerator> enumerator) {
+    winrt::com_ptr<IMMNotificationClient> impl,
+    winrt::com_ptr<IMMDeviceEnumerator> enumerator) {
     this->impl = impl;
     this->enumerator = enumerator;
   }
 
   ~DefaultChangeCallbackHandleImpl() {
-    enumerator->UnregisterEndpointNotificationCallback(this->impl);
+    enumerator->UnregisterEndpointNotificationCallback(this->impl.get());
   }
 
   DefaultChangeCallbackHandleImpl(const DefaultChangeCallbackHandleImpl& copied)
@@ -432,13 +375,12 @@ DefaultChangeCallbackHandle::~DefaultChangeCallbackHandle() {
 
 std::unique_ptr<DefaultChangeCallbackHandle>
 AddDefaultAudioDeviceChangeCallback(DefaultChangeCallbackFun cb) {
-  CComPtr<IMMDeviceEnumerator> de;
-  de.CoCreateInstance(__uuidof(MMDeviceEnumerator));
+  auto de = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
   if (!de) {
     return nullptr;
   }
-  CComPtr<DefaultChangeCOMCallback> impl(new DefaultChangeCOMCallback(cb));
-  if (de->RegisterEndpointNotificationCallback(impl) != S_OK) {
+  auto impl = winrt::make<DefaultChangeCOMCallback>(cb);
+  if (de->RegisterEndpointNotificationCallback(impl.get()) != S_OK) {
     return nullptr;
   }
 

@@ -8,6 +8,10 @@
 
 #include <iostream>
 
+#ifdef _WIN32
+#include <winrt/base.h>
+#endif
+
 using namespace FredEmmott::Audio;
 using namespace std;
 
@@ -37,6 +41,9 @@ void dump_devices(AudioDeviceDirection dir) {
 }
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+  winrt::init_apartment();
+#endif
   cout << "----- INPUT DEVICES -----" << endl;
   dump_devices(AudioDeviceDirection::INPUT);
   cout << "----- OUTPUT DEVICES -----" << endl;

@@ -42,7 +42,7 @@ jobs:
         build-type: [RelWithDebInfo, Debug]
         include:
           - os: windows
-            runs-on: windows-latest
+            runs-on: windows-2022
           - os: macos-arm64
             arch: arm64
             runs-on: macos-latest

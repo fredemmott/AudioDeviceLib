@@ -12,4 +12,6 @@ set_target_properties(
 install(TARGETS list-devices DESTINATION ${CMAKE_INSTALL_PREFIX}/demos)
 if(WIN32)
   install(FILES "$<TARGET_PDB_FILE:list-devices>" DESTINATION ${CMAKE_INSTALL_PREFIX}/demos OPTIONAL)
+  # Needed for older MSVC + older win SDK by winrt
+  target_compile_options(list-devices PRIVATE "/await")
 endif()

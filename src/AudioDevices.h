@@ -74,6 +74,7 @@ void UnmuteAudioDevice(const std::string& deviceID);
 class MuteCallbackHandle final {
  public:
   class Impl;
+  MuteCallbackHandle() = default;
   MuteCallbackHandle(const std::shared_ptr<Impl>& p);
   ~MuteCallbackHandle();
 
@@ -88,6 +89,7 @@ MuteCallbackHandle AddAudioDeviceMuteUnmuteCallback(
 class DefaultChangeCallbackHandle final {
  public:
   class Impl;
+  DefaultChangeCallbackHandle() = default;
   DefaultChangeCallbackHandle(const std::shared_ptr<Impl>& p);
   ~DefaultChangeCallbackHandle();
 

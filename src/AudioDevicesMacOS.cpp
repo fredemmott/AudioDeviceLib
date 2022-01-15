@@ -372,7 +372,7 @@ struct MuteCallbackHandle::Impl : BaseCallbackHandleImpl<bool> {
 MuteCallbackHandle::MuteCallbackHandle(const std::shared_ptr<Impl>& p) : p(p) {
 }
 
-MuteCallbackHandle::~MuteCallbackHandle = default;
+MuteCallbackHandle::~MuteCallbackHandle() = default;
 
 MuteCallbackHandle AddAudioDeviceMuteUnmuteCallback(
   const std::string& deviceID,
@@ -417,7 +417,7 @@ DefaultChangeCallbackHandle::DefaultChangeCallbackHandle(
   : p(p) {
 }
 
-DefaultChangeCallbackHandle::~DefaultChangeCallbackHandle = default;
+DefaultChangeCallbackHandle::~DefaultChangeCallbackHandle() = default;
 
 DefaultChangeCallbackHandle
 AddDefaultAudioDeviceChangeCallback(

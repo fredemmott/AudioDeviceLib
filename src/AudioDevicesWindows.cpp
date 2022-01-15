@@ -19,7 +19,7 @@
 #include "Functiondiscoverykeys_devpkey.h"
 #include "PolicyConfig.h"
 
-#pragma comment(lib,"WindowsApp.lib")
+#pragma comment(lib, "WindowsApp.lib")
 
 namespace FredEmmott::Audio {
 
@@ -371,6 +371,76 @@ DefaultChangeCallbackHandle AddDefaultAudioDeviceChangeCallback(
   }
 
   return std::make_shared<DefaultChangeCallbackHandle::Impl>(impl, de);
+}
+
+namespace {
+typedef std::function<void(AudioDevicePlugEvent, const std::string&)>
+  AudioDevicePlugEventCallback;
+class AudioDevicePlugEventCOMCallback
+  : public winrt::
+      implements<AudioDevicePlugEventCOMCallback, IMMNotificationClient> {
+ public:
+  AudioDevicePlugEventCOMCallback(AudioDevicePlugEventCallback cb) : mCB(cb) {
+  }
+
+  virtual HRESULT OnDefaultDeviceChanged(
+    EDataFlow flow,
+    ERole winAudioDeviceRole,
+    LPCWSTR defaultDeviceID) override {
+    return S_OK;
+  };
+
+  virtual HRESULT OnDeviceAdded(LPCWSTR pwstrDeviceId) override {
+    mCB(AudioDevicePlugEvent::ADDED, Utf16ToUtf8(pwstrDeviceId));
+    return S_OK;
+  };
+
+  virtual HRESULT OnDeviceRemoved(LPCWSTR pwstrDeviceId) override {
+    mCB(AudioDevicePlugEvent::REMOVED, Utf16ToUtf8(pwstrDeviceId));
+    return S_OK;
+  };
+
+  virtual HRESULT OnDeviceStateChanged(LPCWSTR pwstrDeviceId, DWORD dwNewState)
+    override {
+    return S_OK;
+  };
+
+  virtual HRESULT OnPropertyValueChanged(
+    LPCWSTR pwstrDeviceId,
+    const PROPERTYKEY key) override {
+    return S_OK;
+  };
+
+ private:
+  AudioDevicePlugEventCallback mCB;
+};
+}// namespace
+
+class AudioDevicePlugEventCallbackHandle::Impl {
+ public:
+  winrt::com_ptr<IMMDeviceEnumerator> de;
+  winrt::com_ptr<IMMNotificationClient> callback;
+
+  ~Impl() {
+    de->UnregisterEndpointNotificationCallback(callback.get());
+  }
+};
+
+AudioDevicePlugEventCallbackHandle::AudioDevicePlugEventCallbackHandle(
+  const std::shared_ptr<Impl>& p)
+  : p(p) {
+}
+
+AudioDevicePlugEventCallbackHandle::~AudioDevicePlugEventCallbackHandle()
+  = default;
+
+AudioDevicePlugEventCallbackHandle AddAudioDevicePlugEventCallback(
+  std::function<void(AudioDevicePlugEvent, const std::string&)> cb) {
+  auto de
+    = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator));
+  auto comcb = winrt::make<AudioDevicePlugEventCOMCallback>(cb);
+  de->RegisterEndpointNotificationCallback(comcb.get());
+  return std::make_shared<AudioDevicePlugEventCallbackHandle::Impl>(de, comcb);
 }
 
 }// namespace FredEmmott::Audio

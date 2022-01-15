@@ -19,6 +19,8 @@
 #include "Functiondiscoverykeys_devpkey.h"
 #include "PolicyConfig.h"
 
+#pragma comment(lib,"WindowsApp.lib")
+
 namespace FredEmmott::Audio {
 
 namespace {

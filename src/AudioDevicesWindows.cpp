@@ -269,8 +269,7 @@ class MuteCallbackHandle::Impl {
 MuteCallbackHandle::MuteCallbackHandle(const std::shared_ptr<Impl>& p) : p(p) {
 }
 
-MuteCallbackHandle::~MuteCallbackHandle() {
-}
+MuteCallbackHandle::~MuteCallbackHandle() = default;
 
 MuteCallbackHandle AddAudioDeviceMuteUnmuteCallback(
   const std::string& deviceID,
@@ -355,8 +354,7 @@ DefaultChangeCallbackHandle::DefaultChangeCallbackHandle(
   : p(p) {
 }
 
-DefaultChangeCallbackHandle::~DefaultChangeCallbackHandle() {
-}
+DefaultChangeCallbackHandle::~DefaultChangeCallbackHandle() = default;
 
 DefaultChangeCallbackHandle AddDefaultAudioDeviceChangeCallback(
   DefaultChangeCallbackFun cb) {

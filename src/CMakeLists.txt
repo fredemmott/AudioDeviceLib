@@ -23,7 +23,6 @@ if(APPLE)
   )
 elseif(WIN32)
   target_link_libraries(AudioDeviceLib Winmm)
-  target_compile_options(AudioDeviceLib PRIVATE "/await")
 endif()
 
 set_target_properties(

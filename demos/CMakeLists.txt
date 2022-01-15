@@ -13,3 +13,7 @@ install(TARGETS list-devices DESTINATION ${CMAKE_INSTALL_PREFIX}/demos)
 if(WIN32)
   install(FILES "$<TARGET_PDB_FILE:list-devices>" DESTINATION ${CMAKE_INSTALL_PREFIX}/demos OPTIONAL)
 endif()
+
+if(MSVC)
+  target_compile_options(list-devices PRIVATE "/await")
+endif()

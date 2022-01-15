@@ -34,6 +34,9 @@ set_target_properties(
 )
 file(GLOB HEADERS *.h)
 set_target_properties(AudioDeviceLib PROPERTIES PUBLIC_HEADER "${HEADERS}")
+if(MSVC)
+  target_compile_options(AudioDeviceLib PRIVATE "/await")
+endif()
 
 install(
   TARGETS

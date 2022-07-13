@@ -32,6 +32,7 @@ jobs:
           path: build/AudioDeviceLib.cmake
       - name: Upload Demos
         uses: actions/upload-artifact@v2
+        if: ${{ matrix.build_type != 'Debug' }}
         with:
           name: demos-${{matrix.os}}-${{matrix.build-type}}
           path: ${{runner.temp}}/install/demos/

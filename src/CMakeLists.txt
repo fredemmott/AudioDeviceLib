@@ -16,9 +16,9 @@ target_sources(
   FILE_SET publicHeaders
   TYPE HEADERS
   BASE_DIRS
-  "${CMAKE_SOURCE_DIR}/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../include"
   FILES
-  "${CMAKE_SOURCE_DIR}/include/AudioDevices/AudioDevices.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../include/AudioDevices/AudioDevices.h"
 )
 
 if(APPLE)

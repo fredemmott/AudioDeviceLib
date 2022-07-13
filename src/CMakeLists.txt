@@ -10,6 +10,16 @@ add_library(
   STATIC
   ${SOURCES}
 )
+target_sources(
+  AudioDeviceLib
+  PUBLIC
+  FILE_SET publicHeaders
+  TYPE HEADERS
+  BASE_DIRS
+  "${CMAKE_SOURCE_DIR}/include"
+  FILES
+  "${CMAKE_SOURCE_DIR}/include/AudioDevices/AudioDevices.h"
+)
 
 if(APPLE)
   find_library(AUDIOTOOLBOX_FRAMEWORK AudioToolbox)
@@ -32,15 +42,17 @@ set_target_properties(
   CXX_EXTENSIONS OFF
   CXX_STANDARD_REQUIRED ON
 )
-file(GLOB HEADERS *.h)
-set_target_properties(AudioDeviceLib PROPERTIES PUBLIC_HEADER "${HEADERS}")
-if(MSVC)
-  target_compile_options(AudioDeviceLib PRIVATE "/await")
-endif()
 
 install(
   TARGETS
   AudioDeviceLib
-  PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/AudioDevices"
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  COMPONENT AudioDeviceLib
+)
+install(
+  TARGETS
+  AudioDeviceLib
+  FILE_SET publicHeaders
+  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+  COMPONENT AudioDeviceLib
 )

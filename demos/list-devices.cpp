@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-#include "../src/AudioDevices.h"
+#include <AudioDevices/AudioDevices.h>
 
 #ifdef _WIN32
 #include <winrt/base.h>

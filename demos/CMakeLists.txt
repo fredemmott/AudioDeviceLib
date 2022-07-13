@@ -9,11 +9,7 @@ set_target_properties(
   CXX_EXTENSIONS OFF
 )
 
-install(TARGETS list-devices DESTINATION ${CMAKE_INSTALL_PREFIX}/demos)
+install(TARGETS list-devices COMPONENT AudioDeviceLibDemos)
 if(WIN32)
-  install(FILES "$<TARGET_PDB_FILE:list-devices>" DESTINATION ${CMAKE_INSTALL_PREFIX}/demos OPTIONAL)
-endif()
-
-if(MSVC)
-  target_compile_options(list-devices PRIVATE "/await")
+  install(FILES "$<TARGET_PDB_FILE:list-devices>" TYPE BIN COMPONENT AudioDeviceLibDemos)
 endif()

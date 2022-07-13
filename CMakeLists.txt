@@ -1,11 +1,20 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.21)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 project(com.fredemmott.audiodevicelib VERSION 0.1 LANGUAGES CXX)
 
-if (MSVC)
-  add_definitions("/Zc:__cplusplus" "-DUNICODE=1")
+if(PROJECT_IS_TOP_LEVEL)
+  if(MSVC)
+    add_compile_options(
+      "/await:strict"
+      "/Zc:__cplusplus"
+    )
+    add_compile_definitions(
+      "-DUNICODE=1"
+      "-DWIN32_LEAN_AND_MEAN=1"
+    )
+  endif()
 endif()
 
 include(GNUInstallDirs)

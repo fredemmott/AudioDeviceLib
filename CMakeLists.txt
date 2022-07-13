@@ -7,7 +7,7 @@ project(com.fredemmott.audiodevicelib VERSION 0.1 LANGUAGES CXX)
 if(PROJECT_IS_TOP_LEVEL)
   if(MSVC)
     add_compile_options(
-      "/await:strict"
+      "/await"
       "/Zc:__cplusplus"
     )
     add_compile_definitions(

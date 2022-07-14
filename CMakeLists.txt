@@ -36,6 +36,7 @@ configure_file(
   AudioDeviceLib.cmake.in
   AudioDeviceLib.cmake
   @ONLY
+  NEWLINE_STYLE UNIX
 )
 install(
   FILES

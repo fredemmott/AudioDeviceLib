@@ -11,8 +11,8 @@ if(PROJECT_IS_TOP_LEVEL)
       "/Zc:__cplusplus"
     )
     add_compile_definitions(
-      "-DUNICODE=1"
-      "-DWIN32_LEAN_AND_MEAN=1"
+      "UNICODE=1"
+      "WIN32_LEAN_AND_MEAN=1"
     )
   endif()
 endif()

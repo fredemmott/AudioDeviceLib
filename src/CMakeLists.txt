@@ -33,6 +33,20 @@ if(APPLE)
   )
 elseif(WIN32)
   target_link_libraries(AudioDeviceLib Winmm)
+  target_compile_definitions(
+    AudioDeviceLib
+    PRIVATE
+    "UNICODE=1"
+    "WIN32_LEAN_AND_MEAN=1"
+  )
+  if(MSVC)
+    target_compile_options(
+      AudioDeviceLib
+      PUBLIC
+      "/await"
+      "/Zc:__cplusplus"
+    )
+  endif()
 endif()
 
 set_target_properties(

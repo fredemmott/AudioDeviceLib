@@ -4,17 +4,10 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 project(com.fredemmott.audiodevicelib VERSION 0.1 LANGUAGES CXX)
 
-if(PROJECT_IS_TOP_LEVEL)
-  if(MSVC)
-    add_compile_options(
-      "/await"
-      "/Zc:__cplusplus"
-    )
-    add_compile_definitions(
-      "UNICODE=1"
-      "WIN32_LEAN_AND_MEAN=1"
-    )
-  endif()
+if(PROJECT_IS_TOP_LEVEL AND MSVC)
+  add_compile_options(
+    "/diagnostics:caret"
+  )
 endif()
 
 include(GNUInstallDirs)

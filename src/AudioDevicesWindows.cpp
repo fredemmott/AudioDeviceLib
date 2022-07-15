@@ -402,6 +402,11 @@ class AudioDevicePlugEventCOMCallback
 
   virtual HRESULT OnDeviceStateChanged(LPCWSTR pwstrDeviceId, DWORD dwNewState)
     override {
+    if (dwNewState == DEVICE_STATE_ACTIVE) {
+      mCB(AudioDevicePlugEvent::ADDED, Utf16ToUtf8(pwstrDeviceId));
+    } else {
+      mCB(AudioDevicePlugEvent::REMOVED, Utf16ToUtf8(pwstrDeviceId));
+    }
     return S_OK;
   };
 

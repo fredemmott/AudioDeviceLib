@@ -12,10 +12,10 @@ jobs:
         working-directory: build
         run: |
           $args = @(
-            -DSOURCE_URL=https://github.com/${{github.repository}}
-            -DSOURCE_REF=${{github.sha}}
-            -DCMAKE_BUILD_TYPE=${{matrix.build-type}}
-            -DCMAKE_OSX_ARCHITECTURES=${{matrix.arch}}
+            "-DSOURCE_URL=https://github.com/${{github.repository}}"
+            "-DSOURCE_REF=${{github.sha}}"
+            "-DCMAKE_BUILD_TYPE=${{matrix.build-type}}"
+            "-DCMAKE_OSX_ARCHITECTURES=${{matrix.arch}}"
             "-DCMAKE_INSTALL_PREFIX=${{runner.temp}}/install"
           )
           if ( "${{matrix.os}}" -eq "windows" ) {

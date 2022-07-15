@@ -43,7 +43,7 @@ elseif(WIN32)
     target_compile_options(
       AudioDeviceLib
       PUBLIC
-      "/await"
+      "/await:strict"
       "/Zc:__cplusplus"
     )
   endif()

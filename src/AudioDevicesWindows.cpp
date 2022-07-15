@@ -88,7 +88,7 @@ winrt::com_ptr<IAudioEndpointVolume> DeviceIDToAudioEndpointVolume(
   auto device = DeviceIDToDevice(device_id);
   winrt::com_ptr<IAudioEndpointVolume> volume;
   device->Activate(
-    __uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, (void**)&volume);
+    __uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, volume.put_void());
   if (!volume) {
     throw operation_not_supported_error();
   }

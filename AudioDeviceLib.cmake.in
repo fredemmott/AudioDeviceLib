@@ -4,6 +4,7 @@ FetchContent_Declare(
   AudioDeviceLib
   @SOURCE_URL_TYPE@ @SOURCE_URL@
   @SOURCE_REF_TYPE@ @SOURCE_REF@
+  EXCLUDE_FROM_ALL
 )
 
 FetchContent_MakeAvailable(AudioDeviceLib)

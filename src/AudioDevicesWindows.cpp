@@ -215,7 +215,7 @@ void SetDefaultAudioDeviceID(
 bool IsAudioDeviceMuted(const std::string& deviceID) {
   auto volume = DeviceIDToAudioEndpointVolume(deviceID);
   if (!volume) {
-    return false;
+    throw device_not_available_error();
   }
   BOOL ret;
   volume->GetMute(&ret);
@@ -225,7 +225,7 @@ bool IsAudioDeviceMuted(const std::string& deviceID) {
 void MuteAudioDevice(const std::string& deviceID) {
   auto volume = DeviceIDToAudioEndpointVolume(deviceID);
   if (!volume) {
-    return;
+    throw device_not_available_error();
   }
   volume->SetMute(true, nullptr);
 }
@@ -233,7 +233,7 @@ void MuteAudioDevice(const std::string& deviceID) {
 void UnmuteAudioDevice(const std::string& deviceID) {
   auto volume = DeviceIDToAudioEndpointVolume(deviceID);
   if (!volume) {
-    return;
+    throw device_not_available_error();
   }
   volume->SetMute(false, nullptr);
 }

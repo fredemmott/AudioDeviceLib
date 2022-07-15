@@ -1,10 +1,9 @@
 cmake_minimum_required(VERSION 3.21)
 
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-
 project(com.fredemmott.audiodevicelib VERSION 0.1 LANGUAGES CXX)
 
 if(PROJECT_IS_TOP_LEVEL AND MSVC)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   add_compile_options(
     "/diagnostics:caret"
   )

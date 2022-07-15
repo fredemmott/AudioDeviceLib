@@ -4,7 +4,10 @@ FetchContent_Declare(
   AudioDeviceLib
   @SOURCE_URL_TYPE@ @SOURCE_URL@
   @SOURCE_REF_TYPE@ @SOURCE_REF@
-  EXCLUDE_FROM_ALL
 )
 
-FetchContent_MakeAvailable(AudioDeviceLib)
+FetchContent_GetProperties(AudioDeviceLib)
+if(NOT audiodevicelib_POPULATED)
+  FetchContent_Populate(AudioDeviceLib)
+  add_subdirectory("${audiodevicelib_SOURCE_DIR}" "${audiodevicelib_BINARY_DIR}" EXCLUDE_FROM_ALL)
+endif()

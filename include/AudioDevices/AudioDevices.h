@@ -104,6 +104,7 @@ DefaultChangeCallbackHandle AddDefaultAudioDeviceChangeCallback(
 class AudioDevicePlugEventCallbackHandle final {
  public:
   class Impl;
+  AudioDevicePlugEventCallbackHandle() = default;
   AudioDevicePlugEventCallbackHandle(const std::shared_ptr<Impl>& p);
   ~AudioDevicePlugEventCallbackHandle();
 

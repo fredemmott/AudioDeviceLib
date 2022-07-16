@@ -1,11 +1,23 @@
 cmake_minimum_required(VERSION 3.21)
 
+# Respect CMAKE_MSVC_RUNTIME_LIBRARY
+cmake_policy(SET CMP0091 NEW)
+
 project(com.fredemmott.audiodevicelib VERSION 0.1 LANGUAGES CXX)
 
 if(PROJECT_IS_TOP_LEVEL AND MSVC)
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  # Better error messages
   add_compile_options(
     "/diagnostics:caret"
+  )
+
+  # Static CRT...
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+  # ... but dynamic UCRT
+  add_link_options(
+    "/DEFAULTLIB:ucrt$<$<CONFIG:Debug>:d>.lib" # include the dynamic UCRT
+    "/NODEFAULTLIB:libucrt$<$<CONFIG:Debug>:d>.lib" # remove the static UCRT
   )
 endif()
 

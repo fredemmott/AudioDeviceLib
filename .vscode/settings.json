@@ -70,5 +70,6 @@
     "xtree": "cpp",
     "xutility": "cpp"
   },
-  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "editor.formatOnSave": true
 }

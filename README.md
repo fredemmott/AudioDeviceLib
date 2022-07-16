@@ -26,11 +26,17 @@ add_executable(
 target_link_libraries(myapp AudioDeviceLib)
 ```
 
+# Getting Help
+
+I make this for my own use, and I share this in the hope others find it useful; I'm not able to commit to support, bug fixes, or feature development.
+
+If you have found a bug or have a feature request, please check [GitHub issues](https://github.com/fredemmott/AudioDeviceLib/issues) to see if it has already been reported, and [create a new issue](https://github.com/fredemmott/AudioDeviceLib/issues/new) if not.
+
+Support may be available from the community via [Discord](https://discord.gg/CWrvKfuff3).
+
+I am not able to respond to 1:1 requests for help via any means, including GitHub, Discord, Twitter, Reddit, or email.
+
 # License
 
 This code is distributed under the terms of the
 [MIT License](LICENSE).  
-
-I am providing code in the repository to you under an open source license.
-Because this is my personal repository, the license you recieve to my code
-is from me and not my employer (Facebook).

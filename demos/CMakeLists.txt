@@ -9,7 +9,8 @@ set_target_properties(
   CXX_EXTENSIONS OFF
 )
 
-install(TARGETS list-devices COMPONENT AudioDeviceLibDemos)
+install(TARGETS list-devices COMPONENT Demos)
+
 if(WIN32)
-  install(FILES "$<TARGET_PDB_FILE:list-devices>" TYPE BIN COMPONENT AudioDeviceLibDemos)
+  install(FILES "$<TARGET_PDB_FILE:list-devices>" TYPE BIN COMPONENT Demos)
 endif()

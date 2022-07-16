@@ -4,9 +4,12 @@
  * LICENSE file.
  */
 
+#include <AudioDevices/AudioDevices.h>
 #include <CoreAudio/CoreAudio.h>
 
-#include <AudioDevices/AudioDevices.h>
+#include <algorithm>
+#include <unordered_map>
+#include <vector>
 
 namespace FredEmmott::Audio {
 
@@ -223,24 +226,44 @@ std::string GetDataSourceName(
   CFRelease(value);
   return ret;
 }
+
+constexpr AudioObjectPropertyAddress gDeviceListProp {
+  kAudioHardwarePropertyDevices,
+  kAudioObjectPropertyScopeGlobal,
+  kAudioObjectPropertyElementMaster,
+};
+
+std::vector<AudioDeviceID> GetAudioDeviceIDs() {
+  UInt32 size = 0;
+  AudioObjectGetPropertyDataSize(
+    kAudioObjectSystemObject, &gDeviceListProp, 0, nullptr, &size);
+  const auto count = size / sizeof(AudioDeviceID);
+  std::vector<AudioDeviceID> ids(count, {});
+  AudioObjectGetPropertyData(
+    kAudioObjectSystemObject, &gDeviceListProp, 0, nullptr, &size, ids.data());
+  return ids;
+}
+
+bool AudioDeviceSupportsScope(
+  AudioDeviceID id,
+  AudioObjectPropertyScope scope) {
+  // Check how many channels there are. No channels for a given direction? Not a
+  // valid device for that direction.
+  UInt32 size = 0;
+  const AudioObjectPropertyAddress prop {
+    kAudioDevicePropertyStreams,
+    scope,
+    kAudioObjectPropertyScopeGlobal,
+  };
+  AudioObjectGetPropertyDataSize(id, &prop, 0, nullptr, &size);
+  return size > 0;
+}
+
 }// namespace
 
 std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
   AudioDeviceDirection direction) {
-  UInt32 size = 0;
-  AudioObjectPropertyAddress prop = {
-    kAudioHardwarePropertyDevices,
-    kAudioObjectPropertyScopeGlobal,
-    kAudioObjectPropertyElementMaster};
-
-  AudioObjectGetPropertyDataSize(
-    kAudioObjectSystemObject, &prop, 0, nullptr, &size);
-  const auto count = size / sizeof(AudioDeviceID);
-
-  AudioDeviceID ids[count];
-  AudioObjectGetPropertyData(
-    kAudioObjectSystemObject, &prop, 0, nullptr, &size, ids);
-
+  const auto ids = GetAudioDeviceIDs();
   std::map<std::string, AudioDeviceInfo> out;
 
   // The array of devices will always contain both input and output, even if
@@ -249,21 +272,18 @@ std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
     ? kAudioObjectPropertyScopeInput
     : kAudioObjectPropertyScopeOutput;
   for (const auto id: ids) {
-    const auto interface_name = GetAudioObjectProperty<std::string>(
-      id,
-      {kAudioObjectPropertyName,
-       kAudioObjectPropertyScopeGlobal,
-       kAudioObjectPropertyElementMaster});
-    // ... and we do that filtering by finding out how many channels there
-    // are. No channels for a given direction? Not a valid device for that
-    // direction.
-    UInt32 size;
-    prop
-      = {kAudioDevicePropertyStreams, scope, kAudioObjectPropertyScopeGlobal};
-    AudioObjectGetPropertyDataSize(id, &prop, 0, nullptr, &size);
-    if (size == 0) {
+    // ... so filter here
+    if (!AudioDeviceSupportsScope(id, scope)) {
       continue;
     }
+
+    const auto interface_name = GetAudioObjectProperty<std::string>(
+      id,
+      {
+        kAudioObjectPropertyName,
+        kAudioObjectPropertyScopeGlobal,
+        kAudioObjectPropertyElementMaster,
+      });
 
     AudioDeviceInfo info {
       .id = MakeDeviceID(id, direction),
@@ -419,11 +439,120 @@ DefaultChangeCallbackHandle::DefaultChangeCallbackHandle(
 
 DefaultChangeCallbackHandle::~DefaultChangeCallbackHandle() = default;
 
-DefaultChangeCallbackHandle
-AddDefaultAudioDeviceChangeCallback(
+DefaultChangeCallbackHandle AddDefaultAudioDeviceChangeCallback(
   std::function<void(AudioDeviceDirection, AudioDeviceRole, const std::string&)>
     cb) {
   return std::make_shared<DefaultChangeCallbackHandle::Impl>(cb);
+}
+
+struct AudioDevicePlugEventCallbackHandle::Impl final {
+  using UserCallback
+    = std::function<void(AudioDevicePlugEvent, const std::string&)>;
+
+  Impl(const UserCallback& cb) : mCallback(cb) {
+    UpdateDevices();
+    AudioObjectAddPropertyListener(
+      kAudioObjectSystemObject, &gDeviceListProp, &OSCallback, this);
+  }
+
+  ~Impl() {
+    AudioObjectRemovePropertyListener(
+      kAudioObjectSystemObject, &gDeviceListProp, &OSCallback, this);
+  }
+
+ private:
+  UserCallback mCallback;
+  std::vector<AudioDeviceID> mDevices;
+  std::unordered_map<AudioDeviceID, std::vector<std::string>> mDeviceIDStrings;
+
+  void UpdateDevices() {
+    mDevices = GetAudioDeviceIDs();
+    std::sort(mDevices.begin(), mDevices.end());
+
+    for (const auto id: mDevices) {
+      auto& id_strings = mDeviceIDStrings[id];
+      id_strings.clear();
+      if (AudioDeviceSupportsScope(id, kAudioDevicePropertyScopeInput)) {
+        id_strings.push_back(MakeDeviceID(id, AudioDeviceDirection::INPUT));
+      }
+      if (AudioDeviceSupportsScope(id, kAudioDevicePropertyScopeOutput)) {
+        id_strings.push_back(MakeDeviceID(id, AudioDeviceDirection::OUTPUT));
+      }
+    }
+  }
+
+  void OnDevicesChanged() {
+    const auto oldDevices = std::move(mDevices);
+    UpdateDevices();
+    const auto& newDevices = mDevices;
+
+    std::vector<AudioDeviceID> added, removed;
+    std::set_difference(
+      oldDevices.begin(),
+      oldDevices.end(),
+      newDevices.begin(),
+      newDevices.end(),
+      std::back_inserter(removed));
+    std::set_difference(
+      newDevices.begin(),
+      newDevices.end(),
+      oldDevices.begin(),
+      oldDevices.end(),
+      std::back_inserter(added));
+
+    for (const auto id: added) {
+      if (AudioDeviceSupportsScope(id, kAudioDevicePropertyScopeInput)) {
+        mCallback(
+          AudioDevicePlugEvent::ADDED,
+          MakeDeviceID(id, AudioDeviceDirection::INPUT));
+      }
+      if (AudioDeviceSupportsScope(id, kAudioDevicePropertyScopeOutput)) {
+        mCallback(
+          AudioDevicePlugEvent::ADDED,
+          MakeDeviceID(id, AudioDeviceDirection::OUTPUT));
+      }
+    }
+    for (const auto id: removed) {
+      auto it = mDeviceIDStrings.find(id);
+      if (it == mDeviceIDStrings.end()) {
+        continue;
+      }
+      for (const auto& id_string: it->second) {
+        mCallback(AudioDevicePlugEvent::REMOVED, id_string);
+      }
+      mDeviceIDStrings.erase(it);
+    }
+  }
+
+  void InvokeCallback(
+    AudioDevicePlugEvent event,
+    const std::vector<AudioDeviceID>& ids) {
+    for (const auto id: ids) {
+    }
+  }
+
+  static OSStatus OSCallback(
+    AudioDeviceID _id,
+    UInt32 _prop_count,
+    const AudioObjectPropertyAddress* _props,
+    void* data) {
+    reinterpret_cast<Impl*>(data)->OnDevicesChanged();
+    return 0;
+  }
+};
+
+AudioDevicePlugEventCallbackHandle::AudioDevicePlugEventCallbackHandle(
+  const std::shared_ptr<Impl>& p)
+  : p(p) {
+}
+
+AudioDevicePlugEventCallbackHandle::~AudioDevicePlugEventCallbackHandle()
+  = default;
+
+AudioDevicePlugEventCallbackHandle AddAudioDevicePlugEventCallback(
+  std::function<void(AudioDevicePlugEvent, const std::string&)> userCallback) {
+  return std::make_shared<AudioDevicePlugEventCallbackHandle::Impl>(
+    userCallback);
 }
 
 }// namespace FredEmmott::Audio

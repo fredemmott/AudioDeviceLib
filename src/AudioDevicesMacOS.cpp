@@ -203,9 +203,11 @@ std::string GetDataSourceName(
   try {
     data_source = GetAudioObjectProperty<AudioObjectID>(
       device_id,
-      {kAudioDevicePropertyDataSource,
-       scope,
-       kAudioObjectPropertyElementMaster});
+      {
+        kAudioDevicePropertyDataSource,
+        scope,
+        kAudioObjectPropertyElementMaster,
+      });
   } catch (operation_not_supported_error) {
     return std::string();
   }
@@ -277,25 +279,40 @@ std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
       continue;
     }
 
-    const auto interface_name = GetAudioObjectProperty<std::string>(
+    const auto manufacturer = GetAudioObjectProperty<std::string>(
       id,
       {
-        kAudioObjectPropertyName,
+        kAudioObjectPropertyManufacturer,
+        kAudioObjectPropertyScopeGlobal,
+        kAudioObjectPropertyElementMaster,
+      });
+    const auto model = GetAudioObjectProperty<std::string>(
+      id,
+      {
+        kAudioDevicePropertyModelUID,
         kAudioObjectPropertyScopeGlobal,
         kAudioObjectPropertyElementMaster,
       });
 
     AudioDeviceInfo info {
       .id = MakeDeviceID(id, direction),
-      .interfaceName = interface_name,
-      .direction = direction};
+      .interfaceName = manufacturer + "/" + model,
+      .direction = direction,
+    };
     info.state = GetAudioDeviceState(info.id);
 
     const auto data_source_name = GetDataSourceName(id, scope);
     if (data_source_name.empty()) {
-      info.displayName = info.interfaceName;
+      info.displayName = GetAudioObjectProperty<std::string>(
+        id,
+        {
+          kAudioObjectPropertyName,
+          kAudioObjectPropertyScopeGlobal,
+          kAudioObjectPropertyElementMaster,
+        });
     } else {
       info.displayName = data_source_name;
+      info.endpointName = data_source_name;
     }
 
     out.emplace(info.id, info);

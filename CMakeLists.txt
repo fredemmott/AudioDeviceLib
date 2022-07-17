@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.21)
 # Respect CMAKE_MSVC_RUNTIME_LIBRARY
 cmake_policy(SET CMP0091 NEW)
 
-project(com.fredemmott.audiodevicelib VERSION 2.0 LANGUAGES CXX)
+project(com.fredemmott.audiodevicelib VERSION 2.1.0 LANGUAGES CXX)
 
 if(PROJECT_IS_TOP_LEVEL AND MSVC)
   # Better error messages

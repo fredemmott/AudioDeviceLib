@@ -56,6 +56,8 @@ struct AudioDeviceInfo {
   std::string displayName;// e.g. "Generic USB Audio Device (Speakers)"
   AudioDeviceDirection direction;
   AudioDeviceState state;
+
+  auto operator<=>(const AudioDeviceInfo&) const = default;
 };
 
 std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(AudioDeviceDirection);
@@ -115,7 +117,6 @@ class AudioDevicePlugEventCallbackHandle final {
 enum class AudioDevicePlugEvent { ADDED, REMOVED };
 
 AudioDevicePlugEventCallbackHandle AddAudioDevicePlugEventCallback(
-  std::function<void(AudioDevicePlugEvent, const std::string&)>
-);
+  std::function<void(AudioDevicePlugEvent, const std::string&)>);
 
 }// namespace FredEmmott::Audio

@@ -15,8 +15,9 @@ jobs:
             "-DSOURCE_URL=https://github.com/${{github.repository}}"
             "-DSOURCE_REF=${{github.sha}}"
             "-DCMAKE_BUILD_TYPE=${{matrix.build-type}}"
-            "-DCMAKE_OSX_ARCHITECTURES=${{matrix.arch}}"
             "-DCMAKE_INSTALL_PREFIX=${{runner.temp}}/install"
+            "-DCMAKE_OSX_ARCHITECTURES=${{matrix.arch}}"
+            "-DCMAKE_OSX_DEPLOYMENT_TARGETS=10.11"
           )
           if ( "${{matrix.os}}" -eq "windows" ) {
             $args += "-DCMAKE_SYSTEM_VERSION=10.0.22621.0"

@@ -116,12 +116,14 @@ AudioDeviceState GetAudioDeviceState(winrt::com_ptr<IMMDevice> device) {
 
 }// namespace
 
-AudioDeviceState GetAudioDeviceState(const std::string& id) {
+AudioDeviceState GetAudioDeviceState(const std::string& id) try {
   auto device = DeviceIDToDevice(id);
   if (device == nullptr) {
     return AudioDeviceState::DEVICE_NOT_PRESENT;
   }
   return GetAudioDeviceState(device);
+} catch (device_not_available_error) {
+  return AudioDeviceState::DEVICE_NOT_PRESENT;
 }
 
 std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(

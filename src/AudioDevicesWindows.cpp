@@ -96,9 +96,15 @@ winrt::com_ptr<IAudioEndpointVolume> DeviceIDToAudioEndpointVolume(
   return volume;
 }
 
-AudioDeviceState GetAudioDeviceState(winrt::com_ptr<IMMDevice> device) {
+AudioDeviceState GetAudioDeviceState(const winrt::com_ptr<IMMDevice>& device) {
+  if (!device) {
+    return AudioDeviceState::DEVICE_NOT_PRESENT;
+  }
+
   DWORD nativeState;
-  device->GetState(&nativeState);
+  if (device->GetState(&nativeState) != S_OK) {
+    return AudioDeviceState::DEVICE_NOT_PRESENT;
+  }
 
   switch (nativeState) {
     case DEVICE_STATE_ACTIVE:

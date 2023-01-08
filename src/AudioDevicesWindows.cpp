@@ -122,7 +122,7 @@ AudioDeviceState GetAudioDeviceState(const std::string& id) try {
     return AudioDeviceState::DEVICE_NOT_PRESENT;
   }
   return GetAudioDeviceState(device);
-} catch (device_not_available_error) {
+} catch (const device_not_available_error&) {
   return AudioDeviceState::DEVICE_NOT_PRESENT;
 }
 

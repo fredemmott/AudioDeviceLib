@@ -208,7 +208,7 @@ std::string GetDataSourceName(
         scope,
         kAudioObjectPropertyElementMain,
       });
-  } catch (operation_not_supported_error) {
+  } catch (const operation_not_supported_error&) {
     return std::string();
   }
 

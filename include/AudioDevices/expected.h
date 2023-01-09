@@ -92,6 +92,14 @@ class expected {
     return std::move(mValue);
   }
 
+  template <class D>
+  constexpr T value_or(D&& default_value) const& {
+    if (has_value()) {
+      return mValue;
+    }
+    return static_cast<T>(std::forward<D>(default_value));
+  }
+
   constexpr const T* operator->() const noexcept {
     ub_if_error();
     return &mValue;

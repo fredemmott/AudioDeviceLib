@@ -1,6 +1,7 @@
 if(WIN32)
   set(SOURCES AudioDevicesWindows.cpp)
 endif()
+
 if(APPLE)
   set(SOURCES AudioDevicesMacOS.cpp)
 endif()
@@ -19,6 +20,7 @@ target_sources(
   "${CMAKE_CURRENT_SOURCE_DIR}/../include"
   FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/../include/AudioDevices/AudioDevices.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../include/AudioDevices/expected.h"
 )
 
 if(APPLE)
@@ -26,7 +28,7 @@ if(APPLE)
   find_library(COREAUDIO_FRAMEWORK CoreAudio)
   find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
   target_link_libraries(
-   AudioDeviceLib 
+    AudioDeviceLib
     ${AUDIOTOOLBOX_FRAMEWORK}
     ${COREAUDIO_FRAMEWORK}
     ${COREFOUNDATION_FRAMEWORK}
@@ -39,6 +41,7 @@ elseif(WIN32)
     "UNICODE=1"
     "WIN32_LEAN_AND_MEAN=1"
   )
+
   if(MSVC)
     target_compile_options(
       AudioDeviceLib

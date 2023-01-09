@@ -59,7 +59,8 @@ ERole AudioDeviceRoleToERole(const AudioDeviceRole role) {
   __assume(0);
 }
 
-winrt::com_ptr<IMMDevice> DeviceIDToDevice(const std::string& device_id) {
+result<winrt::com_ptr<IMMDevice>> DeviceIDToDevice(
+  const std::string& device_id) {
   static std::map<std::string, winrt::com_ptr<IMMDevice>> cache;
   const auto cached = cache.find(device_id);
   if (cached != cache.end()) {
@@ -72,13 +73,13 @@ winrt::com_ptr<IMMDevice> DeviceIDToDevice(const std::string& device_id) {
   winrt::com_ptr<IMMDevice> device;
   de->GetDevice(utf16.c_str(), device.put());
   if (!device) {
-    throw device_not_available_error();
+    return {unexpect, Error::DEVICE_NOT_AVAILABLE};
   }
   cache.emplace(device_id, device);
   return device;
 }
 
-winrt::com_ptr<IAudioEndpointVolume> DeviceIDToAudioEndpointVolume(
+result<winrt::com_ptr<IAudioEndpointVolume>> DeviceIDToAudioEndpointVolume(
   const std::string& device_id) {
   static std::map<std::string, winrt::com_ptr<IAudioEndpointVolume>> cache;
   const auto cached = cache.find(device_id);
@@ -86,11 +87,14 @@ winrt::com_ptr<IAudioEndpointVolume> DeviceIDToAudioEndpointVolume(
     return cached->second;
   }
   auto device = DeviceIDToDevice(device_id);
+  if (!device) {
+    return {unexpect, device.error()};
+  }
   winrt::com_ptr<IAudioEndpointVolume> volume;
-  device->Activate(
+  (*device)->Activate(
     __uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, volume.put_void());
   if (!volume) {
-    throw operation_not_supported_error();
+    return {unexpect, Error::OPERATION_UNSUPPORTED};
   }
   cache[device_id] = volume;
   return volume;
@@ -122,14 +126,12 @@ AudioDeviceState GetAudioDeviceState(const winrt::com_ptr<IMMDevice>& device) {
 
 }// namespace
 
-AudioDeviceState GetAudioDeviceState(const std::string& id) try {
+AudioDeviceState GetAudioDeviceState(const std::string& id) {
   auto device = DeviceIDToDevice(id);
-  if (device == nullptr) {
+  if (!device.has_value()) {
     return AudioDeviceState::DEVICE_NOT_PRESENT;
   }
-  return GetAudioDeviceState(device);
-} catch (const device_not_available_error&) {
-  return AudioDeviceState::DEVICE_NOT_PRESENT;
+  return GetAudioDeviceState(*device);
 }
 
 std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
@@ -220,30 +222,33 @@ void SetDefaultAudioDeviceID(
   policyConfig->SetDefaultEndpoint(utf16.c_str(), AudioDeviceRoleToERole(role));
 }
 
-bool IsAudioDeviceMuted(const std::string& deviceID) {
+result<bool> IsAudioDeviceMuted(const std::string& deviceID) {
   auto volume = DeviceIDToAudioEndpointVolume(deviceID);
   if (!volume) {
-    throw device_not_available_error();
+    return {unexpect, volume.error()};
   }
+
   BOOL ret;
-  volume->GetMute(&ret);
+  (*volume)->GetMute(&ret);
   return ret;
 }
 
-void MuteAudioDevice(const std::string& deviceID) {
+result<void> MuteAudioDevice(const std::string& deviceID) {
   auto volume = DeviceIDToAudioEndpointVolume(deviceID);
   if (!volume) {
-    throw device_not_available_error();
+    return {unexpect, volume.error()};
   }
-  volume->SetMute(true, nullptr);
+  (*volume)->SetMute(true, nullptr);
+  return {};
 }
 
-void UnmuteAudioDevice(const std::string& deviceID) {
+result<void> UnmuteAudioDevice(const std::string& deviceID) {
   auto volume = DeviceIDToAudioEndpointVolume(deviceID);
   if (!volume) {
-    throw device_not_available_error();
+    return {unexpect, volume.error()};
   }
-  volume->SetMute(false, nullptr);
+  (*volume)->SetMute(false, nullptr);
+  return {};
 }
 
 namespace {
@@ -281,16 +286,21 @@ MuteCallbackHandle::MuteCallbackHandle(const std::shared_ptr<Impl>& p) : p(p) {
 
 MuteCallbackHandle::~MuteCallbackHandle() = default;
 
-MuteCallbackHandle AddAudioDeviceMuteUnmuteCallback(
+result<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
   const std::string& deviceID,
   std::function<void(bool isMuted)> cb) {
   auto dev = DeviceIDToAudioEndpointVolume(deviceID);
-  auto impl = winrt::make<VolumeCOMCallback>(cb);
-  auto ret = dev->RegisterControlChangeNotify(impl.get());
-  if (ret != S_OK) {
-    throw operation_not_supported_error();
+  if (!dev.has_value()) {
+    return {unexpect, dev.error()};
   }
-  return std::make_shared<MuteCallbackHandle::Impl>(impl, dev);
+
+  auto impl = winrt::make<VolumeCOMCallback>(cb);
+  auto ret = (*dev)->RegisterControlChangeNotify(impl.get());
+  if (ret != S_OK) {
+    return {unexpect, Error::OPERATION_UNSUPPORTED};
+  }
+
+  return {{std::make_shared<MuteCallbackHandle::Impl>(impl, *dev)}};
 }
 
 namespace {

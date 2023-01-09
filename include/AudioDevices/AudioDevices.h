@@ -6,31 +6,46 @@
 
 #pragma once
 
+#include <format>
 #include <functional>
 #include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
 
+// TODO: use std::expected instead in C++23
+#include "expected.h"
+
 namespace FredEmmott::Audio {
 
-class device_error : public std::runtime_error {
- protected:
-  device_error(const char* what) : std::runtime_error(what) {
-  }
+enum class Error {
+  DEVICE_NOT_AVAILABLE,
+  OPERATION_UNSUPPORTED,
 };
 
-class operation_not_supported_error : public device_error {
+template <>
+class bad_expected_access<Error> : public bad_expected_access<void> {
  public:
-  operation_not_supported_error() : device_error("Operation not supported") {
+  bad_expected_access(Error e) : bad_expected_access<void>(), mError(e) {
   }
+  bad_expected_access() = delete;
+
+  virtual const char* what() const noexcept override {
+    switch (mError) {
+      case Error::DEVICE_NOT_AVAILABLE:
+        return "Bad expected access - device not available";
+      case Error::OPERATION_UNSUPPORTED:
+        return "Bad expected access - operation not supported";
+    }
+    return "Bad expected access - INVALID ERROR VALUE";
+  };
+
+ private:
+  Error mError;
 };
 
-class device_not_available_error : public device_error {
- public:
-  device_not_available_error() : device_error("Device not available") {
-  }
-};
+template <class T>
+using result = expected<T, Error>;
 
 enum class AudioDeviceRole {
   DEFAULT,
@@ -70,9 +85,9 @@ void SetDefaultAudioDeviceID(
   AudioDeviceRole,
   const std::string& deviceID);
 
-bool IsAudioDeviceMuted(const std::string& deviceID);
-void MuteAudioDevice(const std::string& deviceID);
-void UnmuteAudioDevice(const std::string& deviceID);
+result<bool> IsAudioDeviceMuted(const std::string& deviceID);
+result<void> MuteAudioDevice(const std::string& deviceID);
+result<void> UnmuteAudioDevice(const std::string& deviceID);
 
 class MuteCallbackHandle final {
  public:
@@ -85,7 +100,7 @@ class MuteCallbackHandle final {
   std::shared_ptr<Impl> p;
 };
 
-MuteCallbackHandle AddAudioDeviceMuteUnmuteCallback(
+result<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
   const std::string& deviceID,
   std::function<void(bool isMuted)>);
 

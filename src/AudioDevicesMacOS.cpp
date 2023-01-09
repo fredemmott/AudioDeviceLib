@@ -27,67 +27,82 @@ std::string Utf8StringFromCFString(CFStringRef ref, size_t buf_size = 1024) {
   return buf;
 }
 
+static Error ErrorFromOSStatus(OSStatus s) {
+  switch (s) {
+    case kAudioHardwareBadDeviceError:
+    case kAudioHardwareBadObjectError:
+      return Error::DEVICE_NOT_AVAILABLE;
+    case kAudioHardwareUnsupportedOperationError:
+    case kAudioHardwareUnknownPropertyError:
+      return Error::OPERATION_UNSUPPORTED;
+    default:
+      return Error::UNKNOWN;
+  }
+}
+
 template <class T>
-T GetAudioObjectProperty(
+result<T> GetAudioObjectProperty(
   AudioObjectID id,
   const AudioObjectPropertyAddress& prop) {
   T value;
   UInt32 size = sizeof(value);
   const auto result
     = AudioObjectGetPropertyData(id, &prop, 0, nullptr, &size, &value);
-  switch (result) {
-    case kAudioHardwareBadDeviceError:
-    case kAudioHardwareBadObjectError:
-      throw device_not_available_error();
-    case kAudioHardwareUnsupportedOperationError:
-    case kAudioHardwareUnknownPropertyError:
-      throw operation_not_supported_error();
-    default:
-      break;
+  if (result != kAudioHardwareNoError) {
+    return {unexpect, ErrorFromOSStatus(result)};
   }
   return value;
 }
 
 template <>
-bool GetAudioObjectProperty<bool>(
+result<bool> GetAudioObjectProperty<bool>(
   UInt32 id,
   const AudioObjectPropertyAddress& prop) {
-  return GetAudioObjectProperty<UInt32>(id, prop);
+  return result<bool> {GetAudioObjectProperty<UInt32>(id, prop)};
 }
 
 template <>
-std::string GetAudioObjectProperty<std::string>(
+result<std::string> GetAudioObjectProperty<std::string>(
   UInt32 id,
   const AudioObjectPropertyAddress& prop) {
   CFStringRef value = nullptr;
   UInt32 size = sizeof(value);
-  AudioObjectGetPropertyData(id, &prop, 0, nullptr, &size, &value);
+  const auto result
+    = AudioObjectGetPropertyData(id, &prop, 0, nullptr, &size, &value);
+  if (result != kAudioHardwareNoError) {
+    return {unexpect, ErrorFromOSStatus(result)};
+  }
 
   if (!value) {
-    return std::string();
+    return {unexpect, Error::OPERATION_UNSUPPORTED};
   }
   auto ret = Utf8StringFromCFString(value);
   CFRelease(value);
   return ret;
 }
 
-std::string MakeDeviceID(UInt32 id, AudioDeviceDirection dir) {
+result<std::string> MakeDeviceID(UInt32 id, AudioDeviceDirection dir) {
   const auto uid = GetAudioObjectProperty<std::string>(
     id,
     {kAudioDevicePropertyDeviceUID,
      kAudioObjectPropertyScopeGlobal,
      kAudioObjectPropertyElementMain});
+  if (!uid) {
+    return {unexpect, Error::DEVICE_NOT_AVAILABLE};
+  }
+
   char buf[1024];
   snprintf(
     buf,
     sizeof(buf),
     "%s/%s",
     dir == AudioDeviceDirection::INPUT ? "input" : "output",
-    uid.c_str());
+    uid->c_str());
   return std::string(buf);
 }
 
-std::tuple<UInt32, AudioDeviceDirection> ParseDeviceID(const std::string& id) {
+result<std::tuple<UInt32, AudioDeviceDirection>> ParseDeviceID(
+  const std::string& id) {
   auto idx = id.find_first_of('/');
   auto direction = id.substr(0, idx) == "input" ? AudioDeviceDirection::INPUT
                                                 : AudioDeviceDirection::OUTPUT;
@@ -102,16 +117,28 @@ std::tuple<UInt32, AudioDeviceDirection> ParseDeviceID(const std::string& id) {
     kAudioObjectPropertyElementMain};
   UInt32 size = sizeof(value);
 
-  AudioObjectGetPropertyData(
+  const auto result = AudioObjectGetPropertyData(
     kAudioObjectSystemObject, &prop, 0, nullptr, &size, &value);
   CFRelease(uid);
+
+  if (result != kAudioHardwareNoError) {
+    return {unexpect, ErrorFromOSStatus(result)};
+  }
+
+  if (!device_id) {
+    return {unexpect, Error::DEVICE_NOT_AVAILABLE};
+  }
 
   return std::make_tuple(device_id, direction);
 }
 
-void SetAudioDeviceIsMuted(const std::string& id, bool muted) {
+result<void> SetAudioDeviceIsMuted(const std::string& id, bool muted) {
   const UInt32 value = muted;
-  const auto [native_id, direction] = ParseDeviceID(id);
+  const auto parsed = ParseDeviceID(id);
+  if (!parsed) {
+    return {unexpect, parsed.error()};
+  }
+  const auto [native_id, direction] = *parsed;
   AudioObjectPropertyAddress prop {
     kAudioDevicePropertyMute,
     direction == AudioDeviceDirection::INPUT ? kAudioDevicePropertyScopeInput
@@ -119,18 +146,11 @@ void SetAudioDeviceIsMuted(const std::string& id, bool muted) {
     0};
   const auto result = AudioObjectSetPropertyData(
     native_id, &prop, 0, NULL, sizeof(value), &value);
-  switch (result) {
-    case kAudioHardwareNoError:
-      break;
-    case kAudioHardwareBadDeviceError:
-    case kAudioHardwareBadObjectError:
-      throw device_not_available_error();
-    case kAudioHardwareUnsupportedOperationError:
-    case kAudioHardwareUnknownPropertyError:
-      throw operation_not_supported_error();
-    default:
-      break;
+  if (result != kAudioHardwareNoError) {
+    return {unexpect, ErrorFromOSStatus(result)};
   }
+
+  return {};
 }
 
 }// namespace
@@ -152,7 +172,7 @@ std::string GetDefaultAudioDeviceID(
 
   AudioObjectGetPropertyData(
     kAudioObjectSystemObject, &prop, 0, NULL, &native_id_size, &native_id);
-  return MakeDeviceID(native_id, direction);
+  return MakeDeviceID(native_id, direction).value();
 }
 
 void SetDefaultAudioDeviceID(
@@ -162,7 +182,13 @@ void SetDefaultAudioDeviceID(
   if (role != AudioDeviceRole::DEFAULT) {
     return;
   }
-  const auto [native_id, id_dir] = ParseDeviceID(deviceID);
+
+  const auto parsed = ParseDeviceID(deviceID);
+  if (!parsed) {
+    return;
+  }
+
+  const auto [native_id, id_dir] = *parsed;
   if (id_dir != direction) {
     return;
   }
@@ -177,9 +203,13 @@ void SetDefaultAudioDeviceID(
     kAudioObjectSystemObject, &prop, 0, NULL, sizeof(native_id), &native_id);
 }
 
-bool IsAudioDeviceMuted(const std::string& id) {
-  const auto [native_id, direction] = ParseDeviceID(id);
-  return GetAudioObjectProperty<UInt32>(
+result<bool> IsAudioDeviceMuted(const std::string& id) {
+  const auto parsed = ParseDeviceID(id);
+  if (!parsed) {
+    return {unexpect, parsed.error()};
+  }
+  const auto [native_id, direction] = *parsed;
+  return GetAudioObjectProperty<bool>(
     native_id,
     {kAudioDevicePropertyMute,
      direction == AudioDeviceDirection::INPUT ? kAudioObjectPropertyScopeInput
@@ -187,30 +217,30 @@ bool IsAudioDeviceMuted(const std::string& id) {
      kAudioObjectPropertyElementMain});
 };
 
-void MuteAudioDevice(const std::string& id) {
-  SetAudioDeviceIsMuted(id, true);
+result<void> MuteAudioDevice(const std::string& id) {
+  return SetAudioDeviceIsMuted(id, true);
 }
 
-void UnmuteAudioDevice(const std::string& id) {
-  SetAudioDeviceIsMuted(id, false);
+result<void> UnmuteAudioDevice(const std::string& id) {
+  return SetAudioDeviceIsMuted(id, false);
 }
 
 namespace {
-std::string GetDataSourceName(
+result<std::string> GetDataSourceName(
   AudioDeviceID device_id,
   AudioObjectPropertyScope scope) {
-  AudioObjectID data_source;
-  try {
-    data_source = GetAudioObjectProperty<AudioObjectID>(
-      device_id,
-      {
-        kAudioDevicePropertyDataSource,
-        scope,
-        kAudioObjectPropertyElementMain,
-      });
-  } catch (const operation_not_supported_error&) {
-    return std::string();
+  const auto data_source_result = GetAudioObjectProperty<AudioObjectID>(
+    device_id,
+    {
+      kAudioDevicePropertyDataSource,
+      scope,
+      kAudioObjectPropertyElementMain,
+    });
+  if (!data_source_result) {
+    return {unexpect, data_source_result.error()};
   }
+
+  auto data_source = data_source_result.value();
 
   CFStringRef value = nullptr;
   AudioValueTranslation translate {
@@ -220,9 +250,13 @@ std::string GetDataSourceName(
     kAudioDevicePropertyDataSourceNameForIDCFString,
     scope,
     kAudioObjectPropertyElementMain};
-  AudioObjectGetPropertyData(device_id, &prop, 0, nullptr, &size, &translate);
+  const auto status = AudioObjectGetPropertyData(
+    device_id, &prop, 0, nullptr, &size, &translate);
+  if (!status) {
+    return {unexpect, ErrorFromOSStatus(status)};
+  }
   if (!value) {
-    return std::string();
+    return {unexpect, Error::OPERATION_UNSUPPORTED};
   }
   auto ret = Utf8StringFromCFString(value);
   CFRelease(value);
@@ -279,6 +313,11 @@ std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
       continue;
     }
 
+    const auto deviceID = MakeDeviceID(id, direction);
+    if (!deviceID) {
+      continue;
+    }
+
     const auto manufacturer = GetAudioObjectProperty<std::string>(
       id,
       {
@@ -294,25 +333,33 @@ std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
         kAudioObjectPropertyElementMain,
       });
 
+    if (!(manufacturer && model)) {
+      continue;
+    }
+
     AudioDeviceInfo info {
-      .id = MakeDeviceID(id, direction),
-      .interfaceName = manufacturer + "/" + model,
+      .id = *deviceID,
+      .interfaceName = *manufacturer + "/" + *model,
       .direction = direction,
     };
     info.state = GetAudioDeviceState(info.id);
 
     const auto data_source_name = GetDataSourceName(id, scope);
-    if (data_source_name.empty()) {
-      info.displayName = GetAudioObjectProperty<std::string>(
+    if (data_source_name && !data_source_name->empty()) {
+      info.displayName = *data_source_name;
+      info.endpointName = *data_source_name;
+    } else {
+      const auto name = GetAudioObjectProperty<std::string>(
         id,
         {
           kAudioObjectPropertyName,
           kAudioObjectPropertyScopeGlobal,
           kAudioObjectPropertyElementMain,
         });
-    } else {
-      info.displayName = data_source_name;
-      info.endpointName = data_source_name;
+      if (!name) {
+        continue;
+      }
+      info.displayName = *name;
     }
 
     out.emplace(info.id, info);
@@ -321,10 +368,15 @@ std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
 }
 
 AudioDeviceState GetAudioDeviceState(const std::string& id) {
-  const auto [native_id, direction] = ParseDeviceID(id);
+  const auto parsed = ParseDeviceID(id);
+  if (!parsed) {
+    return AudioDeviceState::DEVICE_NOT_PRESENT;
+  }
+  const auto [native_id, direction] = *parsed;
   if (!native_id) {
     return AudioDeviceState::DEVICE_NOT_PRESENT;
   }
+
   const auto scope = (direction == AudioDeviceDirection::INPUT)
     ? kAudioDevicePropertyScopeInput
     : kAudioDevicePropertyScopeOutput;
@@ -334,6 +386,10 @@ AudioDeviceState GetAudioDeviceState(const std::string& id) {
     {kAudioDevicePropertyTransportType,
      scope,
      kAudioObjectPropertyElementMain});
+
+  if (!transport) {
+    return AudioDeviceState::DEVICE_NOT_PRESENT;
+  }
 
   // no jack: 'Internal Speakers'
   // jack: 'Headphones'
@@ -353,8 +409,9 @@ AudioDeviceState GetAudioDeviceState(const std::string& id) {
   }
 
   const auto is_plugged = GetAudioObjectProperty<bool>(native_id, prop);
-  return is_plugged ? AudioDeviceState::CONNECTED
-                    : AudioDeviceState::DEVICE_PRESENT_NO_CONNECTION;
+  return (is_plugged && *is_plugged)
+    ? AudioDeviceState::CONNECTED
+    : AudioDeviceState::DEVICE_PRESENT_NO_CONNECTION;
 }
 
 namespace {
@@ -411,11 +468,15 @@ MuteCallbackHandle::MuteCallbackHandle(const std::shared_ptr<Impl>& p) : p(p) {
 
 MuteCallbackHandle::~MuteCallbackHandle() = default;
 
-MuteCallbackHandle AddAudioDeviceMuteUnmuteCallback(
+result<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
   const std::string& deviceID,
   std::function<void(bool isMuted)> cb) {
-  const auto [id, direction] = ParseDeviceID(deviceID);
-  return std::make_shared<MuteCallbackHandle::Impl>(cb, id, direction);
+  const auto parsed = ParseDeviceID(deviceID);
+  if (!parsed) {
+    return {unexpect, Error::DEVICE_NOT_AVAILABLE};
+  }
+  const auto [id, direction] = *parsed;
+  return {{std::make_shared<MuteCallbackHandle::Impl>(cb, id, direction)}};
 }
 
 struct DefaultChangeCallbackHandle::Impl {
@@ -425,7 +486,10 @@ struct DefaultChangeCallbackHandle::Impl {
       [=](AudioDeviceID native_id) {
         const auto device
           = MakeDeviceID(native_id, AudioDeviceDirection::INPUT);
-        cb(AudioDeviceDirection::INPUT, AudioDeviceRole::DEFAULT, device);
+        if (!device) {
+          return;
+        }
+        cb(AudioDeviceDirection::INPUT, AudioDeviceRole::DEFAULT, *device);
       },
       kAudioObjectSystemObject,
       {kAudioHardwarePropertyDefaultInputDevice,
@@ -436,7 +500,10 @@ struct DefaultChangeCallbackHandle::Impl {
         [=](AudioDeviceID native_id) {
           const auto device
             = MakeDeviceID(native_id, AudioDeviceDirection::OUTPUT);
-          cb(AudioDeviceDirection::OUTPUT, AudioDeviceRole::DEFAULT, device);
+          if (!device) {
+            return;
+          }
+          cb(AudioDeviceDirection::OUTPUT, AudioDeviceRole::DEFAULT, *device);
         },
         kAudioObjectSystemObject,
         {kAudioHardwarePropertyDefaultOutputDevice,
@@ -490,10 +557,14 @@ struct AudioDevicePlugEventCallbackHandle::Impl final {
       auto& id_strings = mDeviceIDStrings[id];
       id_strings.clear();
       if (AudioDeviceSupportsScope(id, kAudioDevicePropertyScopeInput)) {
-        id_strings.push_back(MakeDeviceID(id, AudioDeviceDirection::INPUT));
+        auto devID = MakeDeviceID(id, AudioDeviceDirection::INPUT);
+        if (devID) {
+          id_strings.push_back(*devID);
+        }
       }
       if (AudioDeviceSupportsScope(id, kAudioDevicePropertyScopeOutput)) {
-        id_strings.push_back(MakeDeviceID(id, AudioDeviceDirection::OUTPUT));
+        auto devID = MakeDeviceID(id, AudioDeviceDirection::OUTPUT);
+        id_strings.push_back(*devID);
       }
     }
   }
@@ -519,14 +590,16 @@ struct AudioDevicePlugEventCallbackHandle::Impl final {
 
     for (const auto id: added) {
       if (AudioDeviceSupportsScope(id, kAudioDevicePropertyScopeInput)) {
-        mCallback(
-          AudioDevicePlugEvent::ADDED,
-          MakeDeviceID(id, AudioDeviceDirection::INPUT));
+        auto devID = MakeDeviceID(id, AudioDeviceDirection::INPUT);
+        if (devID) {
+          mCallback(AudioDevicePlugEvent::ADDED, *devID);
+        }
       }
       if (AudioDeviceSupportsScope(id, kAudioDevicePropertyScopeOutput)) {
-        mCallback(
-          AudioDevicePlugEvent::ADDED,
-          MakeDeviceID(id, AudioDeviceDirection::OUTPUT));
+        auto devID = MakeDeviceID(id, AudioDeviceDirection::OUTPUT);
+        if (devID) {
+          mCallback(AudioDevicePlugEvent::ADDED, *devID);
+        }
       }
     }
     for (const auto id: removed) {

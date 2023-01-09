@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include <format>
 #include <functional>
 #include <map>
 #include <memory>
@@ -19,6 +18,7 @@
 namespace FredEmmott::Audio {
 
 enum class Error {
+  UNKNOWN,
   DEVICE_NOT_AVAILABLE,
   OPERATION_UNSUPPORTED,
 };
@@ -36,6 +36,8 @@ class bad_expected_access<Error> : public bad_expected_access<void> {
         return "Bad expected access - device not available";
       case Error::OPERATION_UNSUPPORTED:
         return "Bad expected access - operation not supported";
+      case Error::UNKNOWN:
+        return "Bad expected access - unknown OS error";
     }
     return "Bad expected access - INVALID ERROR VALUE";
   };

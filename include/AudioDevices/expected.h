@@ -20,13 +20,7 @@ struct unexpect_t {};
 inline constexpr unexpect_t unexpect {};
 
 template <class T>
-class bad_expected_access : public bad_expected_access<void> {
- public:
-  bad_expected_access(T) : bad_expected_access<void>() {
-  }
-
-  bad_expected_access() = delete;
-};
+class bad_expected_access;
 
 template <>
 class bad_expected_access<void> : public std::exception {
@@ -38,15 +32,35 @@ class bad_expected_access<void> : public std::exception {
   };
 };
 
+template <class T>
+class bad_expected_access : public bad_expected_access<void> {
+ public:
+  bad_expected_access(T) : bad_expected_access<void>() {
+  }
+
+  bad_expected_access() = delete;
+};
+
 template <class T, class E>
 class expected {
  public:
-  using value_type = typename T;
-  using error_type = typename E;
+  using value_type = T;
+  using error_type = E;
 
   expected(value_type v) : mTag(Tag::Value), mValue(std::move(v)) {};
   expected(unexpect_t, error_type e)
     : mTag(Tag::Error), mError(std::move(e)) {};
+
+  template <class TT, class EE>
+  explicit expected(const expected<TT, EE>& other) {
+    if (other.has_value()) {
+      mTag = Tag::Value;
+      mValue = other.value();
+    } else {
+      mTag = Tag::Error;
+      mError = other.error();
+    }
+  }
 
   ~expected() {
     switch (mTag) {
@@ -126,6 +140,14 @@ class expected {
     return mError;
   }
 
+  constexpr const bool operator==(const T& other) const noexcept {
+    if (mTag != Tag::Value) {
+      return false;
+    }
+
+    return mValue == other;
+  }
+
  private:
   enum class Tag { Value, Error };
 
@@ -135,13 +157,13 @@ class expected {
     error_type mError;
   };
 
-  void throw_if_error() {
+  void throw_if_error() const {
     if (mTag == Tag::Error) {
       throw bad_expected_access(mError);
     }
   }
 
-  void ub_unless_error() {
+  void ub_unless_error() const {
     // Caller is likely noexcept; throw anyway as:
     // - (a) this *is* undefined behavior
     // - (b) it'll probably end up calling std::terminate with a clear
@@ -151,7 +173,7 @@ class expected {
     }
   }
 
-  void ub_if_error() {
+  void ub_if_error() const {
     // Caller is likely noexcept; throw anyway as:
     // - (a) this *is* undefined behavior
     // - (b) it'll probably end up calling std::terminate with a clear
@@ -167,7 +189,7 @@ template <class E>
 class expected<void, E> {
  public:
   using value_type = void;
-  using error_type = typename E;
+  using error_type = E;
 
   expected() = default;
 

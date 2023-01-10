@@ -100,6 +100,22 @@ class expected {
     return static_cast<T>(std::forward<D>(default_value));
   }
 
+  template <class F>
+  constexpr auto and_then(F&& f) const& {
+    if (has_value()) {
+      return invoke(std::forward<F>(f), value());
+    }
+    return *this;
+  }
+
+  template <class F>
+  constexpr auto and_then(F&& f) & {
+    if (has_value()) {
+      return invoke(std::forward<F>(f), value());
+    }
+    return *this;
+  }
+
   constexpr const T* operator->() const noexcept {
     ub_if_error();
     return &mValue;

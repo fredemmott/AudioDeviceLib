@@ -251,6 +251,97 @@ result<void> UnmuteAudioDevice(const std::string& deviceID) {
   return {};
 }
 
+result<VolumeRange> GetDeviceVolumeRange(const std::string& deviceID) {
+  auto volume = DeviceIDToAudioEndpointVolume(deviceID);
+  if (!volume) {
+    return {unexpect, volume.error()};
+  }
+
+  VolumeRange ret {};
+  UINT currentStep;
+  UINT stepCount;
+  (*volume)->GetVolumeRange(
+    &ret.minDecibels, &ret.maxDecibels, &ret.incrementDecibels);
+  (*volume)->GetVolumeStepInfo(&currentStep, &stepCount);
+
+  ret.volumeSteps = stepCount;
+  return ret;
+}
+
+result<Volume> GetDeviceVolume(const std::string& deviceID) {
+  auto volume = DeviceIDToAudioEndpointVolume(deviceID);
+  if (!volume) {
+    return {unexpect, volume.error()};
+  }
+
+  BOOL muted;
+  UINT currentStep;
+  UINT stepCount;
+  FLOAT volumeDecibels;
+  FLOAT volumeScalar;
+  (*volume)->GetMute(&muted);
+  (*volume)->GetVolumeStepInfo(&currentStep, &stepCount);
+  (*volume)->GetMasterVolumeLevel(&volumeDecibels);
+  (*volume)->GetMasterVolumeLevelScalar(&volumeScalar);
+
+  Volume ret {
+    .isMuted = static_cast<bool>(muted),
+    .volumeScalar = volumeScalar,
+    .volumeDecibels = volumeDecibels,
+    .volumeStep = currentStep,
+  };
+
+  return ret;
+}
+
+result<void> SetDeviceVolumeScalar(const std::string& deviceID, float value) {
+  const auto aev = DeviceIDToAudioEndpointVolume(deviceID);
+  if (!aev) {
+    return {unexpect, aev.error()};
+  }
+
+  if ((*aev)->SetMasterVolumeLevelScalar(value, nullptr) == E_INVALIDARG) {
+    return {unexpect, Error::OUT_OF_RANGE};
+  }
+
+  return {};
+}
+
+result<void> SetDeviceVolumeDecibels(const std::string& deviceID, float value) {
+  const auto aev = DeviceIDToAudioEndpointVolume(deviceID);
+  if (!aev) {
+    return {unexpect, aev.error()};
+  }
+
+  if ((*aev)->SetMasterVolumeLevel(value, nullptr) == E_INVALIDARG) {
+    return {unexpect, Error::OUT_OF_RANGE};
+  }
+
+  return {};
+}
+
+result<void> IncreaseDeviceVolume(const std::string& deviceID) {
+  const auto aev = DeviceIDToAudioEndpointVolume(deviceID);
+  if (!aev) {
+    return {unexpect, aev.error()};
+  }
+
+  (*aev)->VolumeStepUp(nullptr);
+
+  return {};
+}
+
+result<void> DecreaseDeviceVolume(const std::string& deviceID) {
+  const auto aev = DeviceIDToAudioEndpointVolume(deviceID);
+  if (!aev) {
+    return {unexpect, aev.error()};
+  }
+
+  (*aev)->VolumeStepDown(nullptr);
+
+  return {};
+}
+
 namespace {
 class VolumeCOMCallback
   : public winrt::implements<VolumeCOMCallback, IAudioEndpointVolumeCallback> {

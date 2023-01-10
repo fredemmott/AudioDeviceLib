@@ -645,4 +645,28 @@ AudioDevicePlugEventCallbackHandle AddAudioDevicePlugEventCallback(
     userCallback);
 }
 
+result<VolumeRange> GetDeviceVolumeRange(const std::string&) {
+  return {unexpect, Error::OPERATION_UNSUPPORTED};
+}
+
+result<Volume> GetDeviceVolume(const std::string& deviceID) {
+  return {unexpect, Error::OPERATION_UNSUPPORTED};
+}
+
+result<void> SetDeviceVolumeScalar(const std::string& deviceID, float) {
+  return {unexpect, Error::OPERATION_UNSUPPORTED};
+}
+
+result<void> SetDeviceVolumeDecibels(const std::string& deviceID, float) {
+  return {unexpect, Error::OPERATION_UNSUPPORTED};
+}
+
+result<void> IncreaseDeviceVolume(const std::string& deviceID) {
+  return {unexpect, Error::OPERATION_UNSUPPORTED};
+}
+
+result<void> DecreaseDeviceVolume(const std::string& deviceID) {
+  return {unexpect, Error::OPERATION_UNSUPPORTED};
+}
+
 }// namespace FredEmmott::Audio

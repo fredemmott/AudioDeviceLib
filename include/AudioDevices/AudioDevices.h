@@ -21,6 +21,7 @@ enum class Error {
   UNKNOWN,
   DEVICE_NOT_AVAILABLE,
   OPERATION_UNSUPPORTED,
+  OUT_OF_RANGE,
 };
 
 template <>
@@ -90,6 +91,27 @@ void SetDefaultAudioDeviceID(
 result<bool> IsAudioDeviceMuted(const std::string& deviceID);
 result<void> MuteAudioDevice(const std::string& deviceID);
 result<void> UnmuteAudioDevice(const std::string& deviceID);
+
+struct VolumeRange {
+  float minDecibels {};
+  float maxDecibels {};
+  float incrementDecibels {};
+  uint32_t volumeSteps;
+};
+
+struct Volume {
+  bool isMuted {};
+  float volumeScalar {};
+  std::optional<float> volumeDecibels {};
+  std::optional<uint32_t> volumeStep {};
+};
+
+result<VolumeRange> GetDeviceVolumeRange(const std::string& deviceID);
+result<Volume> GetDeviceVolume(const std::string& deviceID);
+result<void> SetDeviceVolumeScalar(const std::string& deviceID, float);
+result<void> SetDeviceVolumeDecibels(const std::string& deviceID, float);
+result<void> IncreaseDeviceVolume(const std::string& deviceID);
+result<void> DecreaseDeviceVolume(const std::string& deviceID);
 
 class MuteCallbackHandle final {
  public:

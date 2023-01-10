@@ -39,6 +39,8 @@ class bad_expected_access<Error> : public bad_expected_access<void> {
         return "Bad expected access - operation not supported";
       case Error::UNKNOWN:
         return "Bad expected access - unknown OS error";
+      case Error::OUT_OF_RANGE:
+        return "Bad expected access - out of range";
     }
     return "Bad expected access - INVALID ERROR VALUE";
   };

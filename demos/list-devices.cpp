@@ -6,6 +6,7 @@
 
 #include <AudioDevices/AudioDevices.h>
 
+#include <cmath>
 #include <iostream>
 
 #ifdef _WIN32

@@ -130,6 +130,21 @@ result<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
   const std::string& deviceID,
   std::function<void(bool isMuted)>);
 
+class VolumeCallbackHandle final {
+ public:
+  class Impl;
+  VolumeCallbackHandle() = default;
+  VolumeCallbackHandle(const std::shared_ptr<Impl>& p);
+  ~VolumeCallbackHandle();
+
+ private:
+  std::shared_ptr<Impl> p;
+};
+
+result<VolumeCallbackHandle> AddAudioDeviceVolumeCallback(
+  const std::string& deviceID,
+  std::function<void(const Volume&)>);
+
 class DefaultChangeCallbackHandle final {
  public:
   class Impl;

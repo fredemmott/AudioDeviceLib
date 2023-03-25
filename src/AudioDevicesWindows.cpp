@@ -346,19 +346,20 @@ namespace {
 class VolumeCOMCallback
   : public winrt::implements<VolumeCOMCallback, IAudioEndpointVolumeCallback> {
  public:
-  VolumeCOMCallback(std::function<void(bool isMuted)> cb) : mCB(cb) {
+  VolumeCOMCallback(std::function<void(PAUDIO_VOLUME_NOTIFICATION_DATA)> cb)
+    : mCB(cb) {
   }
 
   ~VolumeCOMCallback() {
   }
 
   virtual HRESULT OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pNotify) override {
-    mCB(pNotify->bMuted);
+    mCB(pNotify);
     return S_OK;
   }
 
  private:
-  std::function<void(bool)> mCB;
+  std::function<void(PAUDIO_VOLUME_NOTIFICATION_DATA)> mCB;
 };
 
 }// namespace
@@ -385,13 +386,52 @@ result<MuteCallbackHandle> AddAudioDeviceMuteUnmuteCallback(
     return {unexpect, dev.error()};
   }
 
-  auto impl = winrt::make<VolumeCOMCallback>(cb);
+  auto impl = winrt::make<VolumeCOMCallback>(
+    [cb](PAUDIO_VOLUME_NOTIFICATION_DATA data) { cb(data->bMuted); });
   auto ret = (*dev)->RegisterControlChangeNotify(impl.get());
   if (ret != S_OK) {
     return {unexpect, Error::OPERATION_UNSUPPORTED};
   }
 
   return {{std::make_shared<MuteCallbackHandle::Impl>(impl, *dev)}};
+}
+
+class VolumeCallbackHandle::Impl {
+ public:
+  winrt::com_ptr<IAudioEndpointVolumeCallback> impl;
+  winrt::com_ptr<IAudioEndpointVolume> dev;
+  ~Impl() {
+    dev->UnregisterControlChangeNotify(impl.get());
+  }
+};
+
+VolumeCallbackHandle::VolumeCallbackHandle(const std::shared_ptr<Impl>& p)
+  : p(p) {
+}
+
+VolumeCallbackHandle::~VolumeCallbackHandle() = default;
+
+result<VolumeCallbackHandle> AddAudioDeviceVolumeCallback(
+  const std::string& deviceID,
+  std::function<void(const Volume&)> cb) {
+  auto dev = DeviceIDToAudioEndpointVolume(deviceID);
+  if (!dev.has_value()) {
+    return {unexpect, dev.error()};
+  }
+
+  auto impl = winrt::make<VolumeCOMCallback>(
+    [cb, deviceID](PAUDIO_VOLUME_NOTIFICATION_DATA data) {
+      auto volume = GetDeviceVolume(deviceID).value();
+      volume.isMuted = data->bMuted;
+      volume.volumeScalar = data->fMasterVolume;
+      cb(volume);
+    });
+  auto ret = (*dev)->RegisterControlChangeNotify(impl.get());
+  if (ret != S_OK) {
+    return {unexpect, Error::OPERATION_UNSUPPORTED};
+  }
+
+  return {{std::make_shared<VolumeCallbackHandle::Impl>(impl, *dev)}};
 }
 
 namespace {

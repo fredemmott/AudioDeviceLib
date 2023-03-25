@@ -5,7 +5,7 @@ jobs:
     name: ${{matrix.os}}/${{matrix.build-type}}
     runs-on: ${{matrix.runs-on}}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Make build directory
         run: cmake -E make_directory build
       - name: Configure
@@ -61,7 +61,7 @@ jobs:
     name: Create zip archive
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Build zip
         run: |
           git archive \
@@ -85,7 +85,7 @@ jobs:
           name: AudioDeviceLib.zip
           path: ${{runner.temp}}/artifacts
       - run: ls -lR ${{runner.temp}}/artifacts
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Get raw tag name
         run: echo "VERSION=$(echo ${{github.ref}} | awk -F/ '{print $NF}')" >> $GITHUB_ENV
       - name: Configure

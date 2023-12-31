@@ -236,7 +236,7 @@ result<std::string> GetDataSourceName(
       scope,
       kAudioObjectPropertyElementMain,
     });
-  if (!data_source_result) {
+  if (!data_source_result.has_value()) {
     return {unexpect, data_source_result.error()};
   }
 
@@ -387,7 +387,7 @@ AudioDeviceState GetAudioDeviceState(const std::string& id) {
      scope,
      kAudioObjectPropertyElementMain});
 
-  if (!transport) {
+  if (!transport.has_value()) {
     return AudioDeviceState::DEVICE_NOT_PRESENT;
   }
 
@@ -409,7 +409,7 @@ AudioDeviceState GetAudioDeviceState(const std::string& id) {
   }
 
   const auto is_plugged = GetAudioObjectProperty<bool>(native_id, prop);
-  return (is_plugged && *is_plugged)
+  return is_plugged.value_or(false)
     ? AudioDeviceState::CONNECTED
     : AudioDeviceState::DEVICE_PRESENT_NO_CONNECTION;
 }
@@ -442,8 +442,10 @@ struct BaseCallbackHandleImpl {
     const AudioObjectPropertyAddress* _props,
     void* data) {
     auto self = reinterpret_cast<BaseCallbackHandleImpl<TProp>*>(data);
-    const auto value = GetAudioObjectProperty<TProp>(id, self->mProp);
-    self->mCallback(value);
+    const auto result = GetAudioObjectProperty<TProp>(id, self->mProp);
+    if (result.has_value()) {
+      self->mCallback(result.value());
+    }
     return 0;
   }
 };

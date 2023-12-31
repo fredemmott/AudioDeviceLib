@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <concepts>
 #include <optional>
 #include <stdexcept>
 
@@ -150,7 +151,12 @@ class expected {
     return mTag == Tag::Value;
   }
 
-  constexpr operator bool() const noexcept {
+  /* Ban implicit conversion of `Expected<bool>` to `bool`, as it's too easy
+   * to make mistakes.
+   *
+   * Use `has_value()` and `value()` instead.
+   */
+  constexpr operator bool() const noexcept requires (!std::convertible_to<bool, T>) {
     return has_value();
   }
 

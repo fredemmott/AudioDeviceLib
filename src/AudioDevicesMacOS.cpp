@@ -325,21 +325,21 @@ std::map<std::string, AudioDeviceInfo> GetAudioDeviceList(
         kAudioObjectPropertyScopeGlobal,
         kAudioObjectPropertyElementMain,
       });
-    const auto model = GetAudioObjectProperty<std::string>(
+    const auto name = GetAudioObjectProperty<std::string>(
       id,
       {
-        kAudioDevicePropertyModelUID,
+        kAudioObjectPropertyName,
         kAudioObjectPropertyScopeGlobal,
         kAudioObjectPropertyElementMain,
       });
 
-    if (!(manufacturer && model)) {
+    if (!(manufacturer && name)) {
       continue;
     }
 
     AudioDeviceInfo info {
       .id = *deviceID,
-      .interfaceName = *manufacturer + "/" + *model,
+      .interfaceName = *manufacturer + "/" + *name,
       .direction = direction,
     };
     info.state = GetAudioDeviceState(info.id);
